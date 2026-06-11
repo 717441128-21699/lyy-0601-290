@@ -2,6 +2,7 @@
 import { mockComplaints, generateId } from '../data/mockData.js';
 import { userService } from './userService.js';
 import { notificationService } from './notificationService.js';
+import { operationLogService } from './operationLogService.js';
 
 let complaints: Complaint[] = [...mockComplaints];
 
@@ -30,6 +31,18 @@ export const complaintService = {
     };
 
     complaints.push(complaint);
+
+    operationLogService.addLog(
+      'complaint-process',
+      userId,
+      userName,
+      'user',
+      `发起投诉：${title}`,
+      complaint.id,
+      'complaint',
+      complaint.id
+    );
+
     return complaint;
   },
 
@@ -68,6 +81,17 @@ export const complaintService = {
       handleTime: new Date().toISOString().replace('T', ' ').substring(0, 19),
     };
 
+    operationLogService.addLog(
+      'complaint-process',
+      handlerId,
+      handlerName,
+      'operator',
+      `受理投诉：${complaints[index].title}`,
+      complaintId,
+      'complaint',
+      complaintId
+    );
+
     return complaints[index];
   },
 
@@ -91,6 +115,17 @@ export const complaintService = {
       'complaint'
     );
 
+    operationLogService.addLog(
+      'complaint-process',
+      complaints[index].handlerId || 'system',
+      complaints[index].handlerName || '系统',
+      'operator',
+      `解决投诉：${complaints[index].title}，处理结果：${handleResult}`,
+      complaintId,
+      'complaint',
+      complaintId
+    );
+
     return complaints[index];
   },
 
@@ -104,6 +139,17 @@ export const complaintService = {
       status: 'closed',
       closeTime: new Date().toISOString().replace('T', ' ').substring(0, 19),
     };
+
+    operationLogService.addLog(
+      'complaint-process',
+      complaints[index].userId,
+      complaints[index].userName,
+      'user',
+      `用户确认投诉已解决：${complaints[index].title}`,
+      complaintId,
+      'complaint',
+      complaintId
+    );
 
     return complaints[index];
   },

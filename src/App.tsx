@@ -160,6 +160,11 @@ function AppRoutes() {
           <DispatcherTaskDetail />
         </ProtectedRoute>
       } />
+      <Route path="/operator/dispatch-task/:taskId" element={
+        <ProtectedRoute allowedRoles={['operator']}>
+          <DispatcherTaskDetail />
+        </ProtectedRoute>
+      } />
 
       <Route path="/finance" element={
         <ProtectedRoute allowedRoles={['finance']}>

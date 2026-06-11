@@ -18,6 +18,7 @@ interface SelectProps {
   disabled?: boolean;
   wrapperClassName?: string;
   className?: string;
+  size?: 'sm' | 'md';
 }
 
 export default function Select({
@@ -30,9 +31,14 @@ export default function Select({
   disabled = false,
   wrapperClassName,
   className,
+  size = 'md',
 }: SelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  
+  const sizeStyles = size === 'sm' 
+    ? 'px-3 py-1.5 text-xs' 
+    : 'px-4 py-2.5 text-sm';
 
   const selectedOption = options.find((opt) => opt.value === value);
 
@@ -64,7 +70,8 @@ export default function Select({
           onClick={() => !disabled && setIsOpen(!isOpen)}
           disabled={disabled}
           className={cn(
-            'w-full px-4 py-2.5 text-left bg-white border rounded-xl flex items-center justify-between focus:outline-none focus:ring-2 focus:ring-primary-300 focus:border-primary-400 transition-all duration-200',
+            'w-full text-left bg-white border rounded-xl flex items-center justify-between focus:outline-none focus:ring-2 focus:ring-primary-300 focus:border-primary-400 transition-all duration-200',
+            sizeStyles,
             error ? 'border-danger-400 focus:ring-danger-300' : 'border-gray-200',
             disabled && 'opacity-50 cursor-not-allowed bg-gray-50',
             className
@@ -89,7 +96,8 @@ export default function Select({
                 onClick={() => !option.disabled && handleSelect(option.value)}
                 disabled={option.disabled}
                 className={cn(
-                  'w-full px-4 py-2.5 text-left hover:bg-gray-50 transition-colors',
+                  'w-full text-left hover:bg-gray-50 transition-colors',
+                  sizeStyles,
                   option.value === value && 'bg-primary-50 text-primary-600',
                   option.disabled && 'opacity-50 cursor-not-allowed'
                 )}

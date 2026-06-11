@@ -174,11 +174,12 @@ export default function Notifications() {
   };
 
   const navigateToDetail = (relatedType: string, relatedId: string) => {
+    const isOperatorRole = user?.role === 'operator';
     const routes: Record<string, string> = {
       'order': `/user/order/${relatedId}`,
       'battery-task': `/operator/battery-task/${relatedId}`,
       'fault': `/operator/fault/${relatedId}`,
-      'dispatch': `/dispatcher/task/${relatedId}`,
+      'dispatch': isOperatorRole ? `/operator/dispatch-task/${relatedId}` : `/dispatcher/task/${relatedId}`,
       'complaint': `/user/complaint/${relatedId}`,
     };
     const route = routes[relatedType];

@@ -13,132 +13,42 @@ import Tabs from '@/components/ui/Tabs';
 import Empty from '@/components/ui/Empty';
 import { SkeletonCard } from '@/components/ui/Skeleton';
 import BottomNav from '@/components/layout/BottomNav';
+import { toast } from '@/components/ui/toastStore';
+import { useAuthStore } from '@/store/authStore';
+import api from '@/utils/api';
 import { cn } from '@/lib/utils';
 import type { Order } from '@shared/types';
 
-const mockOrders: Order[] = [
-  {
-    id: 'order-001',
-    userId: 'user-001',
-    userName: '骑行达人',
-    bikeId: 'bike-001',
-    bikeNo: 'EB001',
-    status: 'completed',
-    startTime: '2026-06-11 08:30:00',
-    endTime: '2026-06-11 08:45:30',
-    duration: 930,
-    distance: 3200,
-    startLng: 116.4074,
-    startLat: 39.9042,
-    endLng: 116.3974,
-    endLat: 39.9842,
-    baseFee: 2,
-    durationFee: 1.5,
-    distanceFee: 1.6,
-    discount: 0,
-    totalAmount: 5.1,
-    paidAmount: 5.1,
-  },
-  {
-    id: 'order-002',
-    userId: 'user-001',
-    userName: '骑行达人',
-    bikeId: 'bike-002',
-    bikeNo: 'EB002',
-    status: 'completed',
-    startTime: '2026-06-10 18:20:00',
-    endTime: '2026-06-10 18:35:00',
-    duration: 900,
-    distance: 2800,
-    startLng: 116.3974,
-    startLat: 39.9842,
-    endLng: 116.4074,
-    endLat: 39.9042,
-    baseFee: 2,
-    durationFee: 1.5,
-    distanceFee: 1.4,
-    discount: 0.5,
-    totalAmount: 4.4,
-    paidAmount: 4.4,
-  },
-  {
-    id: 'order-003',
-    userId: 'user-001',
-    userName: '骑行达人',
-    bikeId: 'bike-005',
-    bikeNo: 'EB005',
-    status: 'completed',
-    startTime: '2026-06-09 12:10:00',
-    endTime: '2026-06-09 12:25:30',
-    duration: 930,
-    distance: 3500,
-    startLng: 116.3174,
-    startLat: 39.9942,
-    endLng: 116.3974,
-    endLat: 39.9842,
-    baseFee: 2,
-    durationFee: 1.5,
-    distanceFee: 1.75,
-    discount: 0,
-    totalAmount: 5.25,
-    paidAmount: 5.25,
-  },
-  {
-    id: 'order-004',
-    userId: 'user-001',
-    userName: '骑行达人',
-    bikeId: 'bike-008',
-    bikeNo: 'EB008',
-    status: 'completed',
-    startTime: '2026-06-08 09:00:00',
-    endTime: '2026-06-08 09:12:00',
-    duration: 720,
-    distance: 2100,
-    startLng: 116.4574,
-    startLat: 39.9242,
-    endLng: 116.4074,
-    endLat: 39.9042,
-    baseFee: 2,
-    durationFee: 0,
-    distanceFee: 1.05,
-    discount: 0,
-    totalAmount: 3.05,
-    paidAmount: 3.05,
-  },
-  {
-    id: 'order-005',
-    userId: 'user-001',
-    userName: '骑行达人',
-    bikeId: 'bike-015',
-    bikeNo: 'EB015',
-    status: 'cancelled',
-    startTime: '2026-06-07 14:30:00',
-    duration: 0,
-    distance: 0,
-    startLng: 116.4174,
-    startLat: 39.9542,
-    baseFee: 0,
-    durationFee: 0,
-    distanceFee: 0,
-    discount: 0,
-    totalAmount: 0,
-    paidAmount: 0,
-  },
-];
-
 export default function Orders() {
   const navigate = useNavigate();
+  const { user } = useAuthStore();
   const [activeTab, setActiveTab] = useState('all');
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setOrders(mockOrders);
+  const fetchOrders = async () => {
+    if (!user) return;
+    try {
+      setLoading(true);
+      const params: Record<string, unknown> = {};
+      if (activeTab !== 'all') {
+        params.status = activeTab;
+      }
+      const res = await api.get<Order[]>(`/orders/user/${user.id}`, params);
+      if (res.code === 200) {
+        setOrders(res.data || []);
+      }
+    } catch (error) {
+      console.error('获取订单列表失败:', error);
+      toast.error('获取订单列表失败');
+    } finally {
       setLoading(false);
-    }, 800);
-    return () => clearTimeout(timer);
-  }, []);
+    }
+  };
+
+  useEffect(() => {
+    fetchOrders();
+  }, [activeTab, user?.id]);
 
   const filteredOrders = orders.filter((order) => {
     if (activeTab === 'all') return true;
@@ -212,7 +122,7 @@ export default function Orders() {
               key={order.id}
               padding="md"
               className="cursor-pointer"
-              onClick={() => navigate(`/order-detail/${order.id}`)}
+              onClick={() => navigate(`/user/order/${order.id}`)}
             >
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">

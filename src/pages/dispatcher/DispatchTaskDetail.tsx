@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import {
   ArrowLeft,
   MapPin,
@@ -9,6 +9,10 @@ import {
   CheckCircle,
   Truck,
   ArrowRight,
+  BatteryCharging,
+  AlertTriangle,
+  Wrench,
+  Bike,
 } from 'lucide-react';
 import Layout from '@/components/layout/Layout';
 import Card from '@/components/ui/Card';
@@ -17,7 +21,8 @@ import Button from '@/components/ui/Button';
 import { SkeletonCard } from '@/components/ui/Skeleton';
 import { toast } from '@/components/ui/toastStore';
 import api from '@/utils/api';
-import type { DispatchTask, DispatchTaskStatus } from '@shared/types';
+import { useAuthStore } from '@/store/authStore';
+import type { DispatchTask, DispatchTaskStatus, UserRole } from '@shared/types';
 import type { SidebarItem } from '@/components/layout/Sidebar';
 
 const dispatcherSidebarItems: SidebarItem[] = [
@@ -27,7 +32,19 @@ const dispatcherSidebarItems: SidebarItem[] = [
   { key: 'tasks', label: '调度任务', icon: MapPin, path: '/dispatcher/tasks' },
 ];
 
+const operatorSidebarItems: SidebarItem[] = [
+  { key: 'dashboard', label: '运维看板', icon: BatteryCharging, path: '/operator/dashboard' },
+  { key: 'battery', label: '换电任务', icon: BatteryCharging, path: '/operator/battery-tasks' },
+  { key: 'fault', label: '故障报修', icon: AlertTriangle, path: '/operator/fault-reports' },
+  { key: 'maintenance', label: '维修记录', icon: Wrench, path: '/operator/maintenance-records' },
+  { key: 'bikes', label: '车辆列表', icon: Bike, path: '/operator/bikes' },
+];
+
 export default function DispatchTaskDetail() {
+  const location = useLocation();
+  const { user } = useAuthStore();
+  const isOperator = location.pathname.startsWith('/operator') || user?.role === 'operator';
+  const sidebarItems = isOperator ? operatorSidebarItems : dispatcherSidebarItems;
   const navigate = useNavigate();
   const { taskId } = useParams();
   const [loading, setLoading] = useState(true);
@@ -107,7 +124,7 @@ export default function DispatchTaskDetail() {
   };
 
   return (
-    <Layout title="调度任务详情" sidebarItems={dispatcherSidebarItems}>
+    <Layout title="调度任务详情" sidebarItems={sidebarItems}>
       <div className="space-y-6">
         <div className="flex items-center gap-4">
           <button

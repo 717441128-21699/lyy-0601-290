@@ -191,10 +191,19 @@ router.post('/suggestions', (req: Request, res: Response): void => {
 
 router.get('/tasks', (req: Request, res: Response): void => {
   try {
-    const { status } = req.query;
-    const tasks = dispatchService.getDispatchTasks(
-      status as DispatchTaskStatus | undefined
-    );
+    const { status, operatorId } = req.query;
+    let tasks: DispatchTask[];
+    
+    if (operatorId) {
+      tasks = dispatchService.getDispatchTasksByOperator(
+        operatorId as string,
+        status as DispatchTaskStatus | undefined
+      );
+    } else {
+      tasks = dispatchService.getDispatchTasks(
+        status as DispatchTaskStatus | undefined
+      );
+    }
 
     const response: ApiResponse<DispatchTask[]> = {
       code: 200,

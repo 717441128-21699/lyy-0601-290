@@ -157,6 +157,14 @@ export const dispatchService = {
     return tasks.sort((a, b) => new Date(b.createTime).getTime() - new Date(a.createTime).getTime());
   },
 
+  getDispatchTasksByOperator(operatorId: string, status?: DispatchTaskStatus): DispatchTask[] {
+    let tasks = dispatchTasks.filter(t => t.assignedStaff?.includes(operatorId));
+    if (status) {
+      tasks = tasks.filter(t => t.status === status);
+    }
+    return tasks.sort((a, b) => new Date(b.createTime).getTime() - new Date(a.createTime).getTime());
+  },
+
   getDispatchTaskById(taskId: string): DispatchTask | undefined {
     return dispatchTasks.find(t => t.id === taskId);
   },
