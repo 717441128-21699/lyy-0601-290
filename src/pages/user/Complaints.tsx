@@ -14,97 +14,48 @@ import Card from '@/components/ui/Card';
 import Badge from '@/components/ui/Badge';
 import Tabs from '@/components/ui/Tabs';
 import Empty from '@/components/ui/Empty';
-import { SkeletonCard } from '@/components/ui/Skeleton';
 import Button from '@/components/ui/Button';
 import Modal from '@/components/ui/Modal';
-import type { Complaint } from '@shared/types';
+import { SkeletonCard } from '@/components/ui/Skeleton';
+import { toast } from '@/components/ui/toastStore';
+import { useAuthStore } from '@/store/authStore';
+import api from '@/utils/api';
 import { cn } from '@/lib/utils';
-
-const mockComplaints: Complaint[] = [
-  {
-    id: 'complaint-001',
-    userId: 'user-001',
-    userName: '骑行达人',
-    orderId: 'order-001',
-    type: 'bike-fault',
-    title: '车辆刹车失灵',
-    description: '骑行过程中发现刹车不太灵敏，存在安全隐患，希望尽快检修。',
-    images: [],
-    status: 'resolved',
-    userConfirmed: false,
-    createTime: '2026-06-10 14:30:00',
-    handlerId: 'op-001',
-    handlerName: '张运维',
-    handleResult: '已安排运维人员上门检修，更换了刹车皮，车辆已恢复正常。感谢您的反馈！',
-    handleTime: '2026-06-10 16:00:00',
-  },
-  {
-    id: 'complaint-002',
-    userId: 'user-001',
-    userName: '骑行达人',
-    orderId: 'order-002',
-    type: 'billing-dispute',
-    title: '计费时长不符',
-    description: '我只骑了10分钟，但订单显示15分钟，希望核实一下。',
-    images: [],
-    status: 'processing',
-    userConfirmed: false,
-    createTime: '2026-06-11 09:15:00',
-    handlerId: 'fin-001',
-    handlerName: '赵财务',
-  },
-  {
-    id: 'complaint-003',
-    userId: 'user-001',
-    userName: '骑行达人',
-    type: 'other',
-    title: '希望增加还车点',
-    description: '家附近的还车点太少了，希望能在XX小区附近增加还车点。',
-    images: [],
-    status: 'pending',
-    userConfirmed: false,
-    createTime: '2026-06-12 10:00:00',
-  },
-  {
-    id: 'complaint-004',
-    userId: 'user-001',
-    userName: '骑行达人',
-    orderId: 'order-004',
-    type: 'bike-fault',
-    title: '车铃不响',
-    description: '车铃按了没反应，路上不太安全。',
-    images: [],
-    status: 'closed',
-    userConfirmed: true,
-    createTime: '2026-06-08 11:20:00',
-    handlerId: 'op-001',
-    handlerName: '张运维',
-    handleResult: '已修复车铃，车辆可正常使用。',
-    handleTime: '2026-06-08 15:30:00',
-    closeTime: '2026-06-08 18:00:00',
-  },
-];
+import type { Complaint, ComplaintStatus } from '@shared/types';
 
 export default function Complaints() {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('all');
+  const { user } = useAuthStore();
+  const [activeTab, setActiveTab] = useState<string>('all');
   const [complaints, setComplaints] = useState<Complaint[]>([]);
   const [loading, setLoading] = useState(true);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [selectedComplaint, setSelectedComplaint] = useState<Complaint | null>(null);
+  const [confirming, setConfirming] = useState(false);
+
+  const fetchComplaints = async () => {
+    if (!user) return;
+    try {
+      setLoading(true);
+      const params: Record<string, unknown> = {};
+      if (activeTab !== 'all') {
+        params.status = activeTab;
+      }
+      const res = await api.get<Complaint[]>(`/complaints/user/${user.id}`, params);
+      if (res.code === 200) {
+        setComplaints(res.data || []);
+      }
+    } catch (error) {
+      console.error('获取投诉列表失败:', error);
+      toast.error('获取投诉列表失败');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setComplaints(mockComplaints);
-      setLoading(false);
-    }, 800);
-    return () => clearTimeout(timer);
-  }, []);
-
-  const filteredComplaints = complaints.filter((complaint) => {
-    if (activeTab === 'all') return true;
-    return complaint.status === activeTab;
-  });
+    fetchComplaints();
+  }, [activeTab, user?.id]);
 
   const getStatusConfig = (status: string) => {
     switch (status) {
@@ -148,18 +99,27 @@ export default function Complaints() {
     setShowConfirmModal(true);
   };
 
-  const handleConfirmClose = () => {
-    if (selectedComplaint) {
-      setComplaints((prev) =>
-        prev.map((c) =>
-          c.id === selectedComplaint.id
-            ? { ...c, status: 'closed', userConfirmed: true }
-            : c
-        )
-      );
+  const handleConfirmClose = async () => {
+    if (!selectedComplaint) return;
+    try {
+      setConfirming(true);
+      const res = await api.post<Complaint>(`/complaints/${selectedComplaint.id}/user-confirm`);
+      if (res.code === 200 && res.data) {
+        setComplaints((prev) =>
+          prev.map((c) => (c.id === selectedComplaint.id ? res.data! : c))
+        );
+        toast.success('已确认问题解决');
+        setShowConfirmModal(false);
+        setSelectedComplaint(null);
+      } else {
+        toast.error(res.message || '确认失败');
+      }
+    } catch (error) {
+      console.error('确认失败:', error);
+      toast.error('确认失败');
+    } finally {
+      setConfirming(false);
     }
-    setShowConfirmModal(false);
-    setSelectedComplaint(null);
   };
 
   const tabItems = [
@@ -191,23 +151,23 @@ export default function Complaints() {
           Array.from({ length: 3 }).map((_, i) => (
             <SkeletonCard key={i} />
           ))
-        ) : filteredComplaints.length === 0 ? (
+        ) : complaints.length === 0 ? (
           <Empty
             title="暂无投诉"
             description="还没有投诉记录，有问题可以随时提交"
           />
         ) : (
-          filteredComplaints.map((complaint) => {
+          complaints.map((complaint) => {
             const statusConfig = getStatusConfig(complaint.status);
             const StatusIcon = statusConfig.icon;
-            const canConfirm = complaint.status === 'resolved' && !complaint.userConfirmed;
+            const canConfirm = complaint.status === 'resolved' && !complaint.userConfirmed && user?.role === 'user';
 
             return (
               <Card
                 key={complaint.id}
                 padding="md"
                 className="cursor-pointer"
-                onClick={() => navigate(`/complaint-detail/${complaint.id}`)}
+                onClick={() => navigate(`/user/complaint/${complaint.id}`)}
               >
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-2">
@@ -267,7 +227,7 @@ export default function Complaints() {
           size="lg"
           variant="secondary"
           icon={<Plus className="w-5 h-5" />}
-          onClick={() => navigate('/complaint-detail/new')}
+          onClick={() => navigate('/user/complaint/new')}
         >
           提交投诉
         </Button>
@@ -284,6 +244,7 @@ export default function Complaints() {
             variant="outline"
             fullWidth
             onClick={() => setShowConfirmModal(false)}
+            disabled={confirming}
           >
             再看看
           </Button>
@@ -291,6 +252,7 @@ export default function Complaints() {
             variant="primary"
             fullWidth
             onClick={handleConfirmClose}
+            loading={confirming}
           >
             确认解决
           </Button>

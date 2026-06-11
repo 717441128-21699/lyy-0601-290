@@ -64,7 +64,7 @@ function AppRoutes() {
         </ProtectedRoute>
       } />
       <Route path="/user/order/:orderId" element={
-        <ProtectedRoute allowedRoles={['user']}>
+        <ProtectedRoute allowedRoles={['user', 'admin']}>
           <UserOrderDetail />
         </ProtectedRoute>
       } />
@@ -79,7 +79,7 @@ function AppRoutes() {
         </ProtectedRoute>
       } />
       <Route path="/user/complaint/:id" element={
-        <ProtectedRoute allowedRoles={['user']}>
+        <ProtectedRoute allowedRoles={['user', 'admin', 'operator']}>
           <UserComplaintDetail />
         </ProtectedRoute>
       } />
@@ -120,12 +120,12 @@ function AppRoutes() {
         </ProtectedRoute>
       } />
       <Route path="/operator/battery-task/:taskId" element={
-        <ProtectedRoute allowedRoles={['operator']}>
+        <ProtectedRoute allowedRoles={['operator', 'admin']}>
           <OperatorBatteryTaskDetail />
         </ProtectedRoute>
       } />
       <Route path="/operator/fault/:reportId" element={
-        <ProtectedRoute allowedRoles={['operator']}>
+        <ProtectedRoute allowedRoles={['operator', 'admin']}>
           <OperatorFaultReportDetail />
         </ProtectedRoute>
       } />
@@ -156,12 +156,12 @@ function AppRoutes() {
         </ProtectedRoute>
       } />
       <Route path="/dispatcher/task/:taskId" element={
-        <ProtectedRoute allowedRoles={['dispatcher']}>
+        <ProtectedRoute allowedRoles={['dispatcher', 'admin']}>
           <DispatcherTaskDetail />
         </ProtectedRoute>
       } />
       <Route path="/operator/dispatch-task/:taskId" element={
-        <ProtectedRoute allowedRoles={['operator']}>
+        <ProtectedRoute allowedRoles={['operator', 'admin']}>
           <DispatcherTaskDetail />
         </ProtectedRoute>
       } />

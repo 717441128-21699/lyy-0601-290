@@ -18,26 +18,12 @@ import Card from '@/components/ui/Card';
 import Badge from '@/components/ui/Badge';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
+import Skeleton from '@/components/ui/Skeleton';
+import { toast } from '@/components/ui/toastStore';
+import { useAuthStore } from '@/store/authStore';
 import { cn } from '@/lib/utils';
+import api from '@/utils/api';
 import type { ComplaintType, Complaint } from '@shared/types';
-
-const mockComplaint: Complaint = {
-  id: 'complaint-001',
-  userId: 'user-001',
-  userName: '骑行达人',
-  orderId: 'order-001',
-  type: 'bike-fault',
-  title: '车辆刹车失灵',
-  description: '骑行过程中发现刹车不太灵敏，存在安全隐患，希望尽快检修。',
-  images: ['https://picsum.photos/200/200?random=1', 'https://picsum.photos/200/200?random=2'],
-  status: 'resolved',
-  userConfirmed: false,
-  createTime: '2026-06-10 14:30:00',
-  handlerId: 'op-001',
-  handlerName: '张运维',
-  handleResult: '已安排运维人员上门检修，更换了刹车皮，车辆已恢复正常。感谢您的反馈！',
-  handleTime: '2026-06-10 16:00:00',
-};
 
 const complaintTypes: { key: ComplaintType; label: string; icon: typeof Bike; desc: string }[] = [
   { key: 'bike-fault', label: '车辆故障', icon: Bike, desc: '车辆损坏、故障等问题' },
@@ -47,6 +33,7 @@ const complaintTypes: { key: ComplaintType; label: string; icon: typeof Bike; de
 
 export default function ComplaintDetail() {
   const navigate = useNavigate();
+  const { user } = useAuthStore();
   const { id } = useParams();
   const [searchParams] = useSearchParams();
   const orderId = searchParams.get('orderId');
@@ -59,16 +46,27 @@ export default function ComplaintDetail() {
   const [loading, setLoading] = useState(!isNew);
   const [complaint, setComplaint] = useState<Complaint | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+
+  const fetchComplaint = async () => {
+    if (!id || isNew) return;
+    try {
+      setLoading(true);
+      const res = await api.get<Complaint>(`/complaints/${id}`);
+      if (res.code === 200 && res.data) {
+        setComplaint(res.data);
+      }
+    } catch (error) {
+      console.error('获取投诉详情失败:', error);
+      toast.error('获取投诉详情失败');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    if (!isNew) {
-      const timer = setTimeout(() => {
-        setComplaint(mockComplaint);
-        setLoading(false);
-      }, 600);
-      return () => clearTimeout(timer);
-    }
-  }, [isNew, id]);
+    fetchComplaint();
+  }, [id, isNew]);
 
   const handleImageUpload = () => {
     const newImage = `https://picsum.photos/200/200?random=${Date.now()}`;
@@ -79,13 +77,50 @@ export default function ComplaintDetail() {
     setImages((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const handleSubmit = () => {
-    if (!title.trim() || !description.trim()) return;
-    setSubmitting(true);
-    setTimeout(() => {
+  const handleSubmit = async () => {
+    if (!title.trim() || !description.trim() || !user) return;
+    try {
+      setSubmitting(true);
+      const res = await api.post<Complaint>('/complaints', {
+        userId: user.id,
+        userName: user.nickname,
+        type,
+        title,
+        description,
+        images,
+        orderId: orderId || undefined,
+      });
+      if (res.code === 201) {
+        toast.success('投诉提交成功');
+        navigate('/user/complaints');
+      } else {
+        toast.error(res.message || '提交失败');
+      }
+    } catch (error) {
+      console.error('提交投诉失败:', error);
+      toast.error('提交失败');
+    } finally {
       setSubmitting(false);
-      navigate('/complaints');
-    }, 1500);
+    }
+  };
+
+  const handleUserConfirm = async () => {
+    if (!id || isNew) return;
+    try {
+      setConfirming(true);
+      const res = await api.post<Complaint>(`/complaints/${id}/user-confirm`);
+      if (res.code === 200 && res.data) {
+        setComplaint(res.data);
+        toast.success('已确认问题解决');
+      } else {
+        toast.error(res.message || '确认失败');
+      }
+    } catch (error) {
+      console.error('确认失败:', error);
+      toast.error('确认失败');
+    } finally {
+      setConfirming(false);
+    }
   };
 
   const getStatusConfig = (status: string) => {
@@ -133,15 +168,15 @@ export default function ComplaintDetail() {
             >
               <ArrowLeft className="w-5 h-5 text-gray-700" />
             </button>
-            <div className="h-6 w-24 bg-gray-200 rounded animate-pulse" />
+            <Skeleton variant="text" width={120} />
           </div>
         </div>
         <div className="p-4 space-y-4">
           <Card padding="lg" hoverable={false}>
             <div className="space-y-3">
-              <div className="h-5 bg-gray-200 rounded w-1/2 animate-pulse" />
-              <div className="h-4 bg-gray-200 rounded w-full animate-pulse" />
-              <div className="h-4 bg-gray-200 rounded w-3/4 animate-pulse" />
+              <Skeleton variant="text" width={160} className="h-5" />
+              <Skeleton variant="text" width="100%" className="h-4" />
+              <Skeleton variant="text" width="80%" className="h-4" />
             </div>
           </Card>
         </div>
@@ -194,11 +229,14 @@ export default function ComplaintDetail() {
                   订单：{complaint.orderId}
                 </Badge>
               )}
+              <Badge variant="outline" size="sm">
+                #{complaint.id}
+              </Badge>
             </div>
 
             <p className="text-gray-600 leading-relaxed">{complaint.description}</p>
 
-            {complaint.images.length > 0 && (
+            {complaint.images && complaint.images.length > 0 && (
               <div className="flex gap-2 mt-4">
                 {complaint.images.map((img, index) => (
                   <div
@@ -255,12 +293,35 @@ export default function ComplaintDetail() {
                     </div>
                   </div>
                 )}
+
+                {complaint.status === 'closed' && complaint.closeTime && (
+                  <div className="flex gap-3">
+                    <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
+                      <CheckCircle className="w-4 h-4 text-gray-500" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium text-gray-900">用户已确认关闭</span>
+                        <span className="text-xs text-gray-400">
+                          {complaint.closeTime?.split(' ')[1]}
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-600 mt-1">投诉已关闭</p>
+                    </div>
+                  </div>
+                )}
               </div>
             </Card>
           )}
 
-          {complaint.status === 'resolved' && !complaint.userConfirmed && (
-            <Button fullWidth size="lg" variant="secondary">
+          {complaint.status === 'resolved' && !complaint.userConfirmed && user?.role === 'user' && (
+            <Button
+              fullWidth
+              size="lg"
+              variant="secondary"
+              loading={confirming}
+              onClick={handleUserConfirm}
+            >
               确认问题已解决
             </Button>
           )}

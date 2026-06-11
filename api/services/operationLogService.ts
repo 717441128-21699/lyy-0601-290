@@ -9,6 +9,7 @@ export const operationLogService = {
     logType?: OperationLogType,
     startTime?: string,
     endTime?: string,
+    relatedId?: string,
     page: number = 1,
     pageSize: number = 20
   ): { list: OperationLog[]; total: number } {
@@ -20,6 +21,10 @@ export const operationLogService = {
 
     if (logType) {
       logs = logs.filter(log => log.type === logType);
+    }
+
+    if (relatedId) {
+      logs = logs.filter(log => log.relatedId === relatedId || log.relatedId?.includes(relatedId));
     }
 
     if (startTime) {

@@ -6,13 +6,14 @@ const router = Router();
 
 router.get('/', (req: Request, res: Response): void => {
   try {
-    const { operatorRole, logType, startTime, endTime, page, pageSize } = req.query;
+    const { operatorRole, logType, startTime, endTime, relatedId, page, pageSize } = req.query;
 
     const result = operationLogService.getLogs(
       operatorRole as UserRole | undefined,
       logType as OperationLogType | undefined,
       startTime as string | undefined,
       endTime as string | undefined,
+      relatedId as string | undefined,
       page ? parseInt(page as string, 10) : 1,
       pageSize ? parseInt(pageSize as string, 10) : 20
     );

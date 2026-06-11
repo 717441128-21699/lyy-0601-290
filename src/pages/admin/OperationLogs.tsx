@@ -16,6 +16,7 @@ import {
   Eye,
   ChevronRight,
   X,
+  RotateCcw,
 } from 'lucide-react';
 import Layout from '@/components/layout/Layout';
 import Card, { CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
@@ -23,8 +24,10 @@ import Button from '@/components/ui/Button';
 import Select from '@/components/ui/Select';
 import Badge from '@/components/ui/Badge';
 import Empty from '@/components/ui/Empty';
+import Input from '@/components/ui/Input';
 import { SkeletonCard } from '@/components/ui/Skeleton';
 import { toast } from '@/components/ui/toastStore';
+import { useAuthStore } from '@/store/authStore';
 import api from '@/utils/api';
 import type { OperationLog, OperationLogType, UserRole } from '@shared/types';
 
@@ -71,25 +74,22 @@ const typeColors: Record<OperationLogType, string> = {
   'system': 'bg-gray-100 text-gray-600',
 };
 
-const relatedTypeRoutes: Record<string, string> = {
-  'order': '/user/order/',
-  'battery-task': '/operator/battery-task/',
-  'fault': '/operator/fault/',
-  'dispatch': '/dispatcher/task/',
-  'complaint': '/user/complaint/',
-};
-
 export default function OperationLogs() {
   const navigate = useNavigate();
+  const { user } = useAuthStore();
   const [logs, setLogs] = useState<OperationLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [roleFilter, setRoleFilter] = useState<string>('');
   const [typeFilter, setTypeFilter] = useState<string>('');
+  const [relatedIdSearch, setRelatedIdSearch] = useState<string>('');
+  const [relatedIdInput, setRelatedIdInput] = useState<string>('');
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [detailLog, setDetailLog] = useState<OperationLog | null>(null);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
+
+  const hasFilters = roleFilter !== '' || typeFilter !== '' || relatedIdSearch !== '';
 
   const fetchLogs = async () => {
     setLoading(true);
@@ -98,12 +98,9 @@ export default function OperationLogs() {
         page,
         pageSize: 20,
       };
-      if (roleFilter) {
-        params.operatorRole = roleFilter;
-      }
-      if (typeFilter) {
-        params.logType = typeFilter;
-      }
+      if (roleFilter) params.operatorRole = roleFilter;
+      if (typeFilter) params.logType = typeFilter;
+      if (relatedIdSearch) params.relatedId = relatedIdSearch;
       const res = await api.get<{ list: OperationLog[]; total: number }>('/operation-logs', params);
       if (res.code === 200) {
         setLogs(res.data.list || []);
@@ -118,7 +115,7 @@ export default function OperationLogs() {
 
   useEffect(() => {
     fetchLogs();
-  }, [page, roleFilter, typeFilter]);
+  }, [page, roleFilter, typeFilter, relatedIdSearch]);
 
   const roleOptions = [
     { value: '', label: '全部角色' },
@@ -151,11 +148,29 @@ export default function OperationLogs() {
     });
   };
 
+  const getRouteForRelated = (relatedType?: string, relatedId?: string) => {
+    if (!relatedType || !relatedId) return null;
+    const isAdmin = user?.role === 'admin';
+    switch (relatedType) {
+      case 'order':
+        return `/user/order/${relatedId}`;
+      case 'battery-task':
+        return `/operator/battery-task/${relatedId}`;
+      case 'fault':
+        return `/operator/fault/${relatedId}`;
+      case 'dispatch':
+        return isAdmin ? `/dispatcher/task/${relatedId}` : `/dispatcher/task/${relatedId}`;
+      case 'complaint':
+        return `/user/complaint/${relatedId}`;
+      default:
+        return null;
+    }
+  };
+
   const navigateToRelated = (relatedType?: string, relatedId?: string) => {
-    if (!relatedType || !relatedId) return;
-    const route = relatedTypeRoutes[relatedType];
+    const route = getRouteForRelated(relatedType, relatedId);
     if (route) {
-      navigate(`${route}${relatedId}`);
+      navigate(route);
       setDetailModalOpen(false);
     }
   };
@@ -165,23 +180,33 @@ export default function OperationLogs() {
     setDetailModalOpen(true);
   };
 
+  const handleSearchRelatedId = () => {
+    setRelatedIdSearch(relatedIdInput.trim());
+    setPage(1);
+  };
+
+  const handleClearFilters = () => {
+    setRoleFilter('');
+    setTypeFilter('');
+    setRelatedIdInput('');
+    setRelatedIdSearch('');
+    setPage(1);
+  };
+
   const handleExport = async () => {
     try {
       setExporting(true);
       const params: Record<string, unknown> = {
         pageSize: 1000,
       };
-      if (roleFilter) {
-        params.operatorRole = roleFilter;
-      }
-      if (typeFilter) {
-        params.logType = typeFilter;
-      }
+      if (roleFilter) params.operatorRole = roleFilter;
+      if (typeFilter) params.logType = typeFilter;
+      if (relatedIdSearch) params.relatedId = relatedIdSearch;
       const res = await api.get<{ list: OperationLog[]; total: number }>('/operation-logs', params);
       if (res.code === 200 && res.data.list) {
         const csvContent = generateCSV(res.data.list);
         downloadCSV(csvContent);
-        toast.success('导出成功');
+        toast.success(`导出成功，共 ${res.data.list.length} 条记录`);
       }
     } catch (error) {
       console.error('导出失败:', error);
@@ -223,7 +248,7 @@ export default function OperationLogs() {
         <Card hoverable={false}>
           <CardContent>
             <div className="flex flex-wrap items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
+              <div className="flex flex-wrap items-center gap-3">
                 <div className="flex items-center gap-2">
                   <Filter className="w-5 h-5 text-gray-400" />
                   <span className="text-sm text-gray-600">筛选：</span>
@@ -233,13 +258,34 @@ export default function OperationLogs() {
                   value={roleFilter}
                   onChange={setRoleFilter}
                   className="w-36"
+                  size="sm"
                 />
                 <Select
                   options={typeOptions}
                   value={typeFilter}
                   onChange={setTypeFilter}
                   className="w-36"
+                  size="sm"
                 />
+                <div className="flex items-center gap-2">
+                  <Input
+                    placeholder="输入投诉/订单编号搜索"
+                    value={relatedIdInput}
+                    onChange={(e) => setRelatedIdInput(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleSearchRelatedId()}
+                    wrapperClassName="w-56"
+                    inputSize="sm"
+                    leftIcon={<Search className="w-4 h-4" />}
+                  />
+                  <Button variant="outline" size="sm" onClick={handleSearchRelatedId}>
+                    搜索
+                  </Button>
+                </div>
+                {hasFilters && (
+                  <Button variant="ghost" size="sm" icon={<RotateCcw className="w-4 h-4" />} onClick={handleClearFilters}>
+                    清空筛选
+                  </Button>
+                )}
               </div>
               <div className="flex items-center gap-2">
                 <Button
@@ -261,6 +307,35 @@ export default function OperationLogs() {
                 </Button>
               </div>
             </div>
+            {hasFilters && (
+              <div className="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-gray-100">
+                <span className="text-xs text-gray-500">当前筛选：</span>
+                {roleFilter && (
+                  <Badge variant="outline" size="sm" className="gap-1">
+                    角色：{roleLabels[roleFilter as UserRole]}
+                    <button onClick={() => setRoleFilter('')} className="ml-1 hover:text-gray-700">
+                      <X className="w-3 h-3" />
+                    </button>
+                  </Badge>
+                )}
+                {typeFilter && (
+                  <Badge variant="outline" size="sm" className="gap-1">
+                    类型：{typeLabels[typeFilter as OperationLogType]}
+                    <button onClick={() => setTypeFilter('')} className="ml-1 hover:text-gray-700">
+                      <X className="w-3 h-3" />
+                    </button>
+                  </Badge>
+                )}
+                {relatedIdSearch && (
+                  <Badge variant="outline" size="sm" className="gap-1">
+                    编号：{relatedIdSearch}
+                    <button onClick={() => { setRelatedIdSearch(''); setRelatedIdInput(''); setPage(1); }} className="ml-1 hover:text-gray-700">
+                      <X className="w-3 h-3" />
+                    </button>
+                  </Badge>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -280,14 +355,15 @@ export default function OperationLogs() {
               </div>
             ) : logs.length === 0 ? (
               <Empty
-                title="暂无操作记录"
-                description="当前没有符合条件的操作记录"
+                title={hasFilters ? '未找到匹配的记录' : '暂无操作记录'}
+                description={hasFilters ? '请尝试调整筛选条件' : '当前没有符合条件的操作记录'}
                 icon={<Clock className="w-12 h-12 text-gray-300" />}
               />
             ) : (
               <div className="space-y-3">
                 {logs.map((log) => {
                   const Icon = typeIcons[log.type];
+                  const relatedRoute = getRouteForRelated(log.relatedType, log.relatedId);
                   return (
                     <div
                       key={log.id}
@@ -312,18 +388,24 @@ export default function OperationLogs() {
                         {log.relatedName && (
                           <div className="flex items-center gap-2 mt-2">
                             <span className="text-xs text-gray-400">关联对象：</span>
-                            <button
-                              onClick={() => navigateToRelated(log.relatedType, log.relatedId)}
-                              className="text-xs text-primary-600 hover:text-primary-700 hover:underline flex items-center gap-1"
-                            >
-                              <Badge variant="outline" size="xs">
-                                {log.relatedName}
-                              </Badge>
-                              {log.relatedId && (
-                                <span>#{log.relatedId}</span>
-                              )}
-                              <ChevronRight className="w-3 h-3" />
-                            </button>
+                            {relatedRoute ? (
+                              <button
+                                onClick={() => navigateToRelated(log.relatedType, log.relatedId)}
+                                className="text-xs text-primary-600 hover:text-primary-700 hover:underline flex items-center gap-1"
+                              >
+                                <Badge variant="outline" size="xs">
+                                  {log.relatedName}
+                                </Badge>
+                                {log.relatedId && (
+                                  <span>#{log.relatedId}</span>
+                                )}
+                                <ChevronRight className="w-3 h-3" />
+                              </button>
+                            ) : (
+                              <span className="text-xs text-gray-500">
+                                {log.relatedName} {log.relatedId ? `#${log.relatedId}` : ''}
+                              </span>
+                            )}
                           </div>
                         )}
                         <div className="flex items-center justify-between mt-2">
@@ -448,15 +530,16 @@ export default function OperationLogs() {
                           <p className="text-xs text-gray-500">#{detailLog.relatedId}</p>
                         )}
                       </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        icon={<ChevronRight className="w-4 h-4" />}
-                        onClick={() => navigateToRelated(detailLog.relatedType, detailLog.relatedId)}
-                        disabled={!detailLog.relatedType || !detailLog.relatedId}
-                      >
-                        查看详情
-                      </Button>
+                      {getRouteForRelated(detailLog.relatedType, detailLog.relatedId) ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          icon={<ChevronRight className="w-4 h-4" />}
+                          onClick={() => navigateToRelated(detailLog.relatedType, detailLog.relatedId)}
+                        >
+                          查看详情
+                        </Button>
+                      ) : null}
                     </div>
                   </div>
                 )}
@@ -466,7 +549,7 @@ export default function OperationLogs() {
               <Button variant="outline" onClick={() => setDetailModalOpen(false)}>
                 关闭
               </Button>
-              {detailLog.relatedType && detailLog.relatedId && (
+              {getRouteForRelated(detailLog.relatedType, detailLog.relatedId) && (
                 <Button
                   variant="primary"
                   icon={<Eye className="w-4 h-4" />}

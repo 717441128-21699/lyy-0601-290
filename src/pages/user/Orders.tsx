@@ -50,10 +50,7 @@ export default function Orders() {
     fetchOrders();
   }, [activeTab, user?.id]);
 
-  const filteredOrders = orders.filter((order) => {
-    if (activeTab === 'all') return true;
-    return order.status === activeTab;
-  });
+  const filteredOrders = orders;
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
