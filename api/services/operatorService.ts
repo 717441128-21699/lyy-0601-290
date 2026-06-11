@@ -3,6 +3,7 @@ import { mockBatteryTasks, mockFaultReports, mockMaintenanceRecords, generateId,
 import { bikeService } from './bikeService.js';
 import { userService } from './userService.js';
 import { notificationService } from './notificationService.js';
+import { operationLogService } from './operationLogService.js';
 
 let batteryTasks: BatteryTask[] = [...mockBatteryTasks];
 let faultReports: FaultReport[] = [...mockFaultReports];
@@ -96,6 +97,18 @@ export const operatorService = {
         taskId,
         'battery-task'
       );
+
+      const operator = operators.find(o => o.id === task.operatorId);
+      operationLogService.addLog(
+        'battery-complete',
+        task.operatorId,
+        operator?.name || task.operatorName || '运维人员',
+        'operator',
+        `完成车辆 ${task.bikeNo} 换电，电量从 ${task.currentBattery}% 到 ${targetBattery}%`,
+        taskId,
+        'battery-task',
+        task.bikeNo
+      );
     }
 
     return batteryTasks[index];
@@ -167,6 +180,17 @@ export const operatorService = {
     if (bike && bike.status !== 'in-use') {
       bikeService.updateBikeStatus(faultReports[index].bikeId, 'maintenance');
     }
+
+    operationLogService.addLog(
+      'complaint-process',
+      handlerId,
+      handlerName,
+      'operator',
+      `开始处理车辆 ${faultReports[index].bikeNo} 的故障`,
+      reportId,
+      'fault',
+      faultReports[index].bikeNo
+    );
 
     return faultReports[index];
   },

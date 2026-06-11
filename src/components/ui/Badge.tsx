@@ -1,8 +1,8 @@
 import { cn } from '@/lib/utils';
 import type { HTMLAttributes, ReactNode } from 'react';
 
-type BadgeVariant = 'default' | 'primary' | 'secondary' | 'success' | 'warning' | 'danger';
-type BadgeSize = 'sm' | 'md';
+type BadgeVariant = 'default' | 'primary' | 'secondary' | 'success' | 'warning' | 'danger' | 'outline';
+type BadgeSize = 'xs' | 'sm' | 'md';
 
 interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
   children: ReactNode;
@@ -18,9 +18,11 @@ const variantStyles: Record<BadgeVariant, string> = {
   success: 'bg-success-50 text-success-600',
   warning: 'bg-warning-50 text-warning-600',
   danger: 'bg-danger-50 text-danger-600',
+  outline: 'bg-transparent border border-gray-300 text-gray-600',
 };
 
 const sizeStyles: Record<BadgeSize, string> = {
+  xs: 'px-1.5 py-0.5 text-[10px]',
   sm: 'px-2 py-0.5 text-xs',
   md: 'px-2.5 py-1 text-sm',
 };
@@ -32,6 +34,7 @@ const dotColors: Record<BadgeVariant, string> = {
   success: 'bg-success-500',
   warning: 'bg-warning-500',
   danger: 'bg-danger-500',
+  outline: 'bg-gray-500',
 };
 
 export default function Badge({

@@ -4,6 +4,7 @@ import { bikeService } from './bikeService.js';
 import { userService } from './userService.js';
 import { configService } from './configService.js';
 import { notificationService } from './notificationService.js';
+import { operationLogService } from './operationLogService.js';
 
 let orders: Order[] = [...mockOrders];
 
@@ -112,6 +113,17 @@ export const orderService = {
       'order'
     );
 
+    operationLogService.addLog(
+      'unlock',
+      userId,
+      user.nickname,
+      'user',
+      `用户开锁骑行车辆 ${bike.bikeNo}`,
+      newOrder.id,
+      'order',
+      bike.bikeNo
+    );
+
     return { success: true, order: newOrder };
   },
 
@@ -202,6 +214,18 @@ export const orderService = {
       `您的骑行已结束，时长${durationText}，费用${amount}元`,
       order.id,
       'order'
+    );
+
+    const orderUser = userService.getUserById(order.userId);
+    operationLogService.addLog(
+      'return',
+      order.userId,
+      orderUser?.nickname || order.userName,
+      'user',
+      `用户还车，车辆 ${order.bikeNo}，费用 ${amount} 元`,
+      order.id,
+      'order',
+      order.bikeNo
     );
 
     return { success: true, order: orders[index] };

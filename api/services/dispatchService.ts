@@ -2,6 +2,7 @@
 import { mockHeatmapData, mockDispatchSuggestions, mockDispatchTasks, generateId, areas, operators } from '../data/mockData.js';
 import { bikeService } from './bikeService.js';
 import { notificationService } from './notificationService.js';
+import { operationLogService } from './operationLogService.js';
 
 let heatmapData: HeatmapData[] = [...mockHeatmapData];
 let dispatchSuggestions: DispatchSuggestion[] = [...mockDispatchSuggestions];
@@ -69,19 +70,41 @@ export const dispatchService = {
 
     dispatchTasks.push(task);
 
+    const dispatchContent = `新调度任务：从${task.fromAreaName}调${task.bikeCount}辆车到${task.toAreaName}，当前状态：待执行`;
+    
     if (task.assignedStaff && task.assignedStaff.length > 0) {
-      task.assignedStaff.forEach(dispatcherId => {
+      task.assignedStaff.forEach(operatorId => {
         notificationService.pushNotification(
-          dispatcherId,
-          'dispatcher',
+          operatorId,
+          'operator',
           'dispatch',
-          '调度任务已创建',
-          '调度任务已生成，请安排执行',
+          '新调度任务已分配',
+          dispatchContent,
           task.id,
           'dispatch'
         );
       });
     }
+
+    notificationService.pushNotificationToRole(
+      'dispatcher',
+      'dispatch',
+      '调度任务已创建',
+      dispatchContent,
+      task.id,
+      'dispatch'
+    );
+
+    operationLogService.addLog(
+      'dispatch-confirm',
+      'system',
+      '系统',
+      'dispatcher',
+      `确认调度建议：从${task.fromAreaName}调${task.bikeCount}辆车到${task.toAreaName}`,
+      task.id,
+      'dispatch',
+      `${task.fromAreaName}→${task.toAreaName}`
+    );
 
     return { success: true, suggestion, task };
   },

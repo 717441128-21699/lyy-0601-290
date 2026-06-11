@@ -68,7 +68,9 @@ export const notificationService = {
     role: UserRole,
     type: NotificationType,
     title: string,
-    content: string
+    content: string,
+    relatedId?: string,
+    relatedType?: string
   ): Notification[] {
     const userNotifications = notifications.filter(n => n.userRole === role);
     const userIds = [...new Set(userNotifications.map(n => n.userId))];
@@ -80,6 +82,8 @@ export const notificationService = {
       type,
       title,
       content,
+      relatedId,
+      relatedType,
       read: false,
       createTime: new Date().toISOString().replace('T', ' ').substring(0, 19),
     }));

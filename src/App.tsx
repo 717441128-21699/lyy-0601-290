@@ -32,6 +32,14 @@ import DispatcherDashboard from "@/pages/dispatcher/Dashboard";
 import DispatcherHeatmap from "@/pages/dispatcher/Heatmap";
 import DispatcherSuggestions from "@/pages/dispatcher/Suggestions";
 import DispatcherTasks from "@/pages/dispatcher/Tasks";
+import DispatcherTaskDetail from "@/pages/dispatcher/DispatchTaskDetail";
+
+import OperatorBatteryTaskDetail from "@/pages/operator/BatteryTaskDetail";
+import OperatorFaultReportDetail from "@/pages/operator/FaultReportDetail";
+
+import AdminOperationLogs from "@/pages/admin/OperationLogs";
+
+import Notifications from "@/pages/common/Notifications";
 
 import NotificationListener from "@/components/NotificationListener";
 
@@ -111,6 +119,16 @@ function AppRoutes() {
           <OperatorBikes />
         </ProtectedRoute>
       } />
+      <Route path="/operator/battery-task/:taskId" element={
+        <ProtectedRoute allowedRoles={['operator']}>
+          <OperatorBatteryTaskDetail />
+        </ProtectedRoute>
+      } />
+      <Route path="/operator/fault/:reportId" element={
+        <ProtectedRoute allowedRoles={['operator']}>
+          <OperatorFaultReportDetail />
+        </ProtectedRoute>
+      } />
 
       <Route path="/dispatcher" element={
         <ProtectedRoute allowedRoles={['dispatcher']}>
@@ -135,6 +153,11 @@ function AppRoutes() {
       <Route path="/dispatcher/tasks" element={
         <ProtectedRoute allowedRoles={['dispatcher']}>
           <DispatcherTasks />
+        </ProtectedRoute>
+      } />
+      <Route path="/dispatcher/task/:taskId" element={
+        <ProtectedRoute allowedRoles={['dispatcher']}>
+          <DispatcherTaskDetail />
         </ProtectedRoute>
       } />
 
@@ -197,6 +220,17 @@ function AppRoutes() {
       <Route path="/admin/users" element={
         <ProtectedRoute allowedRoles={['admin']}>
           <AdminUsers />
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/operation-logs" element={
+        <ProtectedRoute allowedRoles={['admin']}>
+          <AdminOperationLogs />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/notifications" element={
+        <ProtectedRoute allowedRoles={['user', 'operator', 'dispatcher', 'finance', 'admin']}>
+          <Notifications />
         </ProtectedRoute>
       } />
 

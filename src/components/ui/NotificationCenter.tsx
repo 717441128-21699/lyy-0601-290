@@ -1,14 +1,17 @@
 import { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Bell, X, CheckCheck, ChevronRight,
   Bike, CreditCard, Zap, AlertTriangle,
-  MapPin, MessageSquare, Settings
+  MapPin, MessageSquare, Settings, Filter
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { useNotificationStore } from '@/store/notificationStore';
 import api from '@/utils/api';
 import { cn } from '@/lib/utils';
 import type { Notification, NotificationType } from '@shared/types';
+import Tabs from '@/components/ui/Tabs';
+import Button from '@/components/ui/Button';
 
 const notificationIcons: Record<NotificationType, typeof Bike> = {
   'unlock': Bike,
@@ -30,14 +33,21 @@ const notificationColors: Record<NotificationType, string> = {
   'system': 'bg-gray-100 text-gray-600',
 };
 
+const typeFilterTabs = [
+  { key: 'all', label: '全部' },
+  { key: 'unread', label: '未读' },
+];
+
 interface NotificationCenterProps {
   className?: string;
 }
 
 export default function NotificationCenter({ className }: NotificationCenterProps) {
+  const navigate = useNavigate();
   const { user } = useAuthStore();
   const { notifications, unreadCount, addNotification, markAsRead, markAllAsRead, setNotifications } = useNotificationStore();
   const [isOpen, setIsOpen] = useState(false);
+  const [activeFilter, setActiveFilter] = useState('all');
   const dropdownRef = useRef<HTMLDivElement>(null);
   const hasLoaded = useRef(false);
 
@@ -49,15 +59,6 @@ export default function NotificationCenter({ className }: NotificationCenterProp
   }, [user]);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      if (user) {
-        simulateNewNotification();
-      }
-    }, 30000);
-    return () => clearInterval(interval);
-  }, [user]);
-
-  useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsOpen(false);
@@ -66,20 +67,6 @@ export default function NotificationCenter({ className }: NotificationCenterProp
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
-
-  const handleMarkAllAsRead = async () => {
-    markAllAsRead();
-    if (user) {
-      try {
-        await api.post('/notifications/read-all', {
-          userId: user.id,
-          userRole: user.role,
-        });
-      } catch (e) {
-        console.error('Failed to mark all notifications as read:', e);
-      }
-    }
-  };
 
   const loadNotifications = async () => {
     if (!user) return;
@@ -96,39 +83,32 @@ export default function NotificationCenter({ className }: NotificationCenterProp
     }
   };
 
-  const simulateNewNotification = () => {
-    const types: NotificationType[] = ['battery-task', 'dispatch', 'system', 'complaint'];
-    const type = types[Math.floor(Math.random() * types.length)];
-    const titles: Record<NotificationType, string> = {
-      'unlock': '开锁成功',
-      'order-complete': '骑行结束',
-      'battery-task': '新换电任务',
-      'fault': '故障提醒',
-      'dispatch': '调度通知',
-      'complaint': '投诉更新',
-      'system': '系统通知',
-    };
-    const contents: Record<NotificationType, string> = {
-      'unlock': '您的车辆已开锁，祝您骑行愉快',
-      'order-complete': '骑行已结束，请查看电子账单',
-      'battery-task': '您有新的换电任务待处理',
-      'fault': '检测到车辆故障，请及时处理',
-      'dispatch': '系统生成新的调度建议',
-      'complaint': '您的投诉有新的处理进展',
-      'system': '系统将于今晚进行维护升级',
-    };
+  const handleMarkAllAsRead = async () => {
+    markAllAsRead();
+    if (user) {
+      try {
+        await api.post('/notifications/read-all', {
+          userId: user.id,
+          userRole: user.role,
+        });
+      } catch (e) {
+        console.error('Failed to mark all as read:', e);
+      }
+    }
+  };
 
-    const newNotif: Notification = {
-      id: `notif-${Date.now()}`,
-      userId: user!.id,
-      userRole: user!.role,
-      type,
-      title: titles[type],
-      content: contents[type],
-      read: false,
-      createTime: new Date().toLocaleString('zh-CN'),
+  const navigateToDetail = (relatedType: string, relatedId: string) => {
+    const routes: Record<string, string> = {
+      'order': `/user/order/${relatedId}`,
+      'battery-task': `/operator/battery-task/${relatedId}`,
+      'fault': `/operator/fault/${relatedId}`,
+      'dispatch': `/dispatcher/task/${relatedId}`,
+      'complaint': `/user/complaint/${relatedId}`,
     };
-    addNotification(newNotif);
+    const route = routes[relatedType];
+    if (route) {
+      navigate(route);
+    }
   };
 
   const handleNotificationClick = async (notif: Notification) => {
@@ -137,10 +117,14 @@ export default function NotificationCenter({ className }: NotificationCenterProp
       try {
         await api.post(`/notifications/${notif.id}/read`);
       } catch (e) {
-        console.error('Failed to mark notification as read:', e);
+        console.error('Failed to mark as read:', e);
       }
     }
     setIsOpen(false);
+
+    if (notif.relatedId && notif.relatedType) {
+      navigateToDetail(notif.relatedType, notif.relatedId);
+    }
   };
 
   const formatTime = (time: string) => {
@@ -158,6 +142,10 @@ export default function NotificationCenter({ className }: NotificationCenterProp
     return time;
   };
 
+  const displayNotifications = activeFilter === 'unread'
+    ? notifications.filter(n => !n.read)
+    : notifications;
+
   return (
     <div className={cn('relative', className)} ref={dropdownRef}>
       <button
@@ -173,13 +161,14 @@ export default function NotificationCenter({ className }: NotificationCenterProp
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 top-full mt-2 w-96 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden z-50 animate-scale-in origin-top-right">
+        <div className="absolute right-0 top-full mt-2 w-[420px] bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden z-50 animate-scale-in origin-top-right">
           <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
             <h3 className="font-semibold text-gray-900">通知中心</h3>
             <div className="flex items-center gap-2">
               <button
                 onClick={handleMarkAllAsRead}
                 className="text-xs text-primary-600 hover:text-primary-700 flex items-center gap-1"
+                disabled={unreadCount === 0}
               >
                 <CheckCheck className="w-3.5 h-3.5" />
                 全部已读
@@ -193,15 +182,24 @@ export default function NotificationCenter({ className }: NotificationCenterProp
             </div>
           </div>
 
+          <div className="px-5 py-3 border-b border-gray-100 bg-gray-50">
+            <div className="flex items-center gap-2">
+              <Filter className="w-4 h-4 text-gray-400" />
+              <Tabs items={typeFilterTabs} activeKey={activeFilter} onChange={setActiveFilter} size="sm" />
+            </div>
+          </div>
+
           <div className="max-h-[400px] overflow-y-auto">
-            {notifications.length === 0 ? (
+            {displayNotifications.length === 0 ? (
               <div className="py-12 text-center">
                 <Bell className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                <p className="text-sm text-gray-500">暂无通知</p>
+                <p className="text-sm text-gray-500">
+                  {activeFilter === 'unread' ? '暂无未读通知' : '暂无通知'}
+                </p>
               </div>
             ) : (
               <div className="divide-y divide-gray-50">
-                {notifications.slice(0, 10).map((notif) => {
+                {displayNotifications.slice(0, 10).map((notif) => {
                   const Icon = notificationIcons[notif.type];
                   return (
                     <button
@@ -236,9 +234,17 @@ export default function NotificationCenter({ className }: NotificationCenterProp
           </div>
 
           <div className="px-5 py-3 border-t border-gray-100 bg-gray-50">
-            <button className="w-full text-sm text-primary-600 hover:text-primary-700 font-medium">
+            <Button
+              variant="ghost"
+              size="sm"
+              fullWidth
+              onClick={() => {
+                setIsOpen(false);
+                navigate('/notifications');
+              }}
+            >
               查看全部通知
-            </button>
+            </Button>
           </div>
         </div>
       )}

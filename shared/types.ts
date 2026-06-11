@@ -343,3 +343,18 @@ export interface CreateComplaintRequest {
   description: string;
   images: string[];
 }
+
+export type OperationLogType = 'unlock' | 'return' | 'dispatch-confirm' | 'battery-complete' | 'complaint-process' | 'system';
+
+export interface OperationLog {
+  id: string;
+  type: OperationLogType;
+  operatorId: string;
+  operatorName: string;
+  operatorRole: UserRole;
+  description: string;
+  relatedId?: string;
+  relatedType?: string;
+  relatedName?: string;
+  createTime: string;
+}

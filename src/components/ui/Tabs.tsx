@@ -13,6 +13,7 @@ interface TabsProps {
   activeKey: string;
   onChange: (key: string) => void;
   variant?: 'default' | 'pills';
+  size?: 'sm' | 'md';
   className?: string;
 }
 
@@ -21,8 +22,11 @@ export default function Tabs({
   activeKey,
   onChange,
   variant = 'default',
+  size = 'md',
   className,
 }: TabsProps) {
+  const sizeStyles = size === 'sm' ? 'px-3 py-2 text-xs' : 'px-4 py-2.5 text-sm';
+  
   return (
     <div className={cn('', className)}>
       <div
@@ -39,7 +43,8 @@ export default function Tabs({
               onClick={() => !item.disabled && onChange(item.key)}
               disabled={item.disabled}
               className={cn(
-                'flex items-center gap-2 px-4 py-2.5 text-sm font-medium transition-all duration-200',
+                'flex items-center gap-2 font-medium transition-all duration-200',
+                sizeStyles,
                 variant === 'default'
                   ? cn(
                       'border-b-2 -mb-px',

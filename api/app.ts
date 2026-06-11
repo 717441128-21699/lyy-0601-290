@@ -21,6 +21,7 @@ import financeRoutes from './routes/finance.js'
 import complaintRoutes from './routes/complaints.js'
 import notificationRoutes from './routes/notifications.js'
 import adminRoutes from './routes/admin.js'
+import operationLogRoutes from './routes/operationLogs.js'
 
 // for esm mode
 const __filename = fileURLToPath(import.meta.url)
@@ -48,6 +49,7 @@ app.use('/api/finance', financeRoutes)
 app.use('/api/complaints', complaintRoutes)
 app.use('/api/notifications', notificationRoutes)
 app.use('/api/admin', adminRoutes)
+app.use('/api/operation-logs', operationLogRoutes)
 
 /**
  * health
