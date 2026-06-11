@@ -6,6 +6,7 @@ import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Badge from '@/components/ui/Badge';
 import api from '@/utils/api';
+import { toast } from '@/components/ui/toastStore';
 import type { PricingConfig } from '@shared/types';
 
 export default function Pricing() {
@@ -23,8 +24,8 @@ export default function Pricing() {
   useEffect(() => {
     const fetchConfig = async () => {
       try {
-        const res = await api.get<{ pricing: PricingConfig }>('/admin/system-config');
-        setConfig(res.data.pricing);
+        const res = await api.get<PricingConfig>('/admin/config/pricing');
+        setConfig(res.data);
       } catch (error) {
         console.error('Failed to fetch pricing config:', error);
       } finally {
@@ -59,11 +60,11 @@ export default function Pricing() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      await api.put('/admin/system-config/pricing', config);
-      alert('保存成功');
+      await api.put('/admin/config/pricing', config);
+      toast.success('保存成功');
     } catch (error) {
       console.error('Failed to save pricing config:', error);
-      alert('保存失败');
+      toast.error('保存失败');
     } finally {
       setSaving(false);
     }
@@ -84,7 +85,7 @@ export default function Pricing() {
     },
     {
       key: 'durationFee',
-      label: '时长费（元/分钟）',
+      label: '时长费（元/15分钟）',
       icon: Timer,
       color: 'warning',
     },

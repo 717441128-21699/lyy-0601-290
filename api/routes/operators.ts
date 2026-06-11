@@ -1,6 +1,6 @@
-import { Router, type Request, type Response } from 'express';
+﻿import { Router, type Request, type Response } from 'express';
 import { operatorService } from '../services/operatorService.js';
-import { ApiResponse, BatteryTask, FaultReport, MaintenanceRecord, BatteryTaskStatus, FaultStatus } from '../../shared/types.js';
+import { ApiResponse, BatteryTask, FaultReport, MaintenanceRecord, BatteryTaskStatus, FaultStatus } from '@shared/types';
 
 const router = Router();
 

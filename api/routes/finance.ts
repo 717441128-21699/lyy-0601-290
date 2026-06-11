@@ -1,6 +1,6 @@
-import { Router, type Request, type Response } from 'express';
+﻿import { Router, type Request, type Response } from 'express';
 import { financeService } from '../services/financeService.js';
-import { ApiResponse, FinanceOverview, DailyRevenue, DepositRecord, OperatingCost, ProfitReport, DepositType } from '../../shared/types.js';
+import { ApiResponse, FinanceOverview, DailyRevenue, DepositRecord, OperatingCost, ProfitReport, DepositType } from '@shared/types';
 
 const router = Router();
 

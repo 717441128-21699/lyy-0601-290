@@ -1,4 +1,4 @@
-import { Notification, NotificationType, UserRole } from '../../shared/types.js';
+﻿import { Notification, NotificationType, UserRole } from '@shared/types';
 import { mockNotifications, generateId } from '../data/mockData.js';
 
 let notifications: Notification[] = [...mockNotifications];

@@ -1,6 +1,6 @@
-import { Router, type Request, type Response } from 'express';
+﻿import { Router, type Request, type Response } from 'express';
 import { complaintService } from '../services/complaintService.js';
-import { ApiResponse, Complaint, ComplaintType, ComplaintStatus, CreateComplaintRequest } from '../../shared/types.js';
+import { ApiResponse, Complaint, ComplaintType, ComplaintStatus, CreateComplaintRequest } from '@shared/types';
 
 const router = Router();
 

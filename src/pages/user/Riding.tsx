@@ -12,6 +12,11 @@ import {
 import Button from '@/components/ui/Button';
 import Modal from '@/components/ui/Modal';
 import { cn } from '@/lib/utils';
+import api from '@/utils/api';
+import { toast } from '@/components/ui/toastStore';
+import { useNotificationStore } from '@/store/notificationStore';
+import { useAuthStore } from '@/store/authStore';
+import type { Order } from '@shared/types';
 
 const trackPoints = [
   { left: '50%', top: '80%' },
@@ -25,12 +30,23 @@ const trackPoints = [
 
 export default function Riding() {
   const navigate = useNavigate();
+  const { user } = useAuthStore();
+  const { addNotification } = useNotificationStore();
   const [duration, setDuration] = useState(0);
   const [distance, setDistance] = useState(0);
   const [estimatedCost, setEstimatedCost] = useState(2.0);
   const [battery, setBattery] = useState(72);
   const [showEndModal, setShowEndModal] = useState(false);
   const [currentPointIndex, setCurrentPointIndex] = useState(0);
+  const [endingRide, setEndingRide] = useState(false);
+  const [orderId, setOrderId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const savedOrderId = localStorage.getItem('currentOrderId');
+    if (savedOrderId) {
+      setOrderId(savedOrderId);
+    }
+  }, []);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -70,8 +86,49 @@ export default function Riding() {
     setShowEndModal(true);
   };
 
-  const confirmEndRide = () => {
-    navigate('/order-detail/order-001');
+  const confirmEndRide = async () => {
+    if (!orderId) {
+      toast.error('订单信息丢失');
+      return;
+    }
+    if (endingRide) return;
+
+    try {
+      setEndingRide(true);
+      const endLng = 116.4074;
+      const endLat = 39.9042;
+
+      const res = await api.post<Order>(`/orders/${orderId}/end`, { endLng, endLat });
+
+      if (res.code === 200) {
+        toast.success('还车成功');
+
+        if (user) {
+          addNotification({
+            id: `notif-${Date.now()}`,
+            userId: user.id,
+            userRole: user.role,
+            type: 'order-complete',
+            title: '骑行结束',
+            content: `骑行已结束，费用 ¥${res.data?.totalAmount?.toFixed(2) || estimatedCost.toFixed(2)}`,
+            relatedId: orderId,
+            relatedType: 'order',
+            read: false,
+            createTime: new Date().toLocaleString('zh-CN'),
+          });
+        }
+
+        localStorage.removeItem('currentOrderId');
+        navigate(`/user/order/${orderId}`);
+      } else {
+        toast.error(res.message || '还车失败');
+      }
+    } catch (error: any) {
+      toast.error(error?.message || '还车失败');
+    } finally {
+      setEndingRide(false);
+      setShowEndModal(false);
+    }
   };
 
   const isLowBattery = battery < 20;
@@ -233,8 +290,10 @@ export default function Riding() {
               className="h-14 text-lg shadow-lg shadow-secondary-500/30"
               icon={<ArrowDownToLine className="w-5 h-5" />}
               onClick={handleEndRide}
+              loading={endingRide}
+              disabled={endingRide}
             >
-              一键还车
+              {endingRide ? '还车中...' : '一键还车'}
             </Button>
 
             <p className="text-center text-white/50 text-xs mt-3">
@@ -278,8 +337,10 @@ export default function Riding() {
               variant="primary"
               fullWidth
               onClick={confirmEndRide}
+              loading={endingRide}
+              disabled={endingRide}
             >
-              确认还车
+              {endingRide ? '还车中...' : '确认还车'}
             </Button>
           </div>
         </div>

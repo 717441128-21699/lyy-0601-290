@@ -21,8 +21,8 @@ const notificationIcons: Record<NotificationType, typeof Bike> = {
 };
 
 const notificationColors: Record<NotificationType, string> = {
-  'unlock': 'bg-primary-100 text-primary-600',
-  'order-complete': 'bg-success-100 text-success-600',
+  'unlock': 'bg-success-100 text-success-600',
+  'order-complete': 'bg-primary-100 text-primary-600',
   'battery-task': 'bg-warning-100 text-warning-600',
   'fault': 'bg-danger-100 text-danger-600',
   'dispatch': 'bg-secondary-100 text-secondary-600',
@@ -67,9 +67,27 @@ export default function NotificationCenter({ className }: NotificationCenterProp
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  const handleMarkAllAsRead = async () => {
+    markAllAsRead();
+    if (user) {
+      try {
+        await api.post('/notifications/read-all', {
+          userId: user.id,
+          userRole: user.role,
+        });
+      } catch (e) {
+        console.error('Failed to mark all notifications as read:', e);
+      }
+    }
+  };
+
   const loadNotifications = async () => {
+    if (!user) return;
     try {
-      const res = await api.get<Notification[]>('/notifications');
+      const res = await api.get<Notification[]>('/notifications', {
+        userId: user.id,
+        userRole: user.role,
+      });
       if (res.code === 200) {
         setNotifications(res.data);
       }
@@ -113,9 +131,14 @@ export default function NotificationCenter({ className }: NotificationCenterProp
     addNotification(newNotif);
   };
 
-  const handleNotificationClick = (notif: Notification) => {
+  const handleNotificationClick = async (notif: Notification) => {
     if (!notif.read) {
       markAsRead(notif.id);
+      try {
+        await api.post(`/notifications/${notif.id}/read`);
+      } catch (e) {
+        console.error('Failed to mark notification as read:', e);
+      }
     }
     setIsOpen(false);
   };
@@ -155,7 +178,7 @@ export default function NotificationCenter({ className }: NotificationCenterProp
             <h3 className="font-semibold text-gray-900">通知中心</h3>
             <div className="flex items-center gap-2">
               <button
-                onClick={markAllAsRead}
+                onClick={handleMarkAllAsRead}
                 className="text-xs text-primary-600 hover:text-primary-700 flex items-center gap-1"
               >
                 <CheckCheck className="w-3.5 h-3.5" />

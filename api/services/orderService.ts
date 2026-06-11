@@ -1,8 +1,9 @@
-import { Order, RidingData, Bike } from '../../shared/types.js';
+﻿import { Order, RidingData, Bike } from '@shared/types';
 import { mockOrders, generateId } from '../data/mockData.js';
 import { bikeService } from './bikeService.js';
 import { userService } from './userService.js';
 import { configService } from './configService.js';
+import { notificationService } from './notificationService.js';
 
 let orders: Order[] = [...mockOrders];
 
@@ -33,6 +34,7 @@ export const orderService = {
   createOrder(userId: string, bikeId: string): { success: boolean; order?: Order; message?: string; recommendedBikes?: Bike[] } {
     const bike = bikeService.getBikeById(bikeId);
     const user = userService.getUserById(userId);
+    const dispatchConfig = configService.getDispatchConfig();
 
     if (!user) {
       return { success: false, message: '用户不存在' };
@@ -42,9 +44,24 @@ export const orderService = {
       return { success: false, message: '车辆不存在' };
     }
 
-    if (bike.status !== 'available' && bike.status !== 'low-battery') {
+    if (bike.status === 'fault' || bike.status === 'maintenance') {
       const nearbyBikes = bikeService.getNearbyBikes(bike.lng, bike.lat, 500, 'available');
-      return { success: false, message: '车辆不可用', recommendedBikes: nearbyBikes.slice(0, 3) };
+      return { success: false, message: '车辆故障或维护中，暂不可用', recommendedBikes: nearbyBikes.slice(0, 3) };
+    }
+
+    if (bike.status === 'in-use') {
+      const nearbyBikes = bikeService.getNearbyBikes(bike.lng, bike.lat, 500, 'available');
+      return { success: false, message: '车辆正在使用中', recommendedBikes: nearbyBikes.slice(0, 3) };
+    }
+
+    if (bike.battery < dispatchConfig.lowBatteryThreshold) {
+      const nearbyBikes = bikeService.getNearbyBikes(bike.lng, bike.lat, 500, 'available');
+      bikeService.updateBikeStatus(bikeId, 'low-battery');
+      return { 
+        success: false, 
+        message: `车辆电量过低（${bike.battery}%），已自动锁定。为您推荐附近可用车辆`, 
+        recommendedBikes: nearbyBikes.slice(0, 5) 
+      };
     }
 
     if (!user.depositPaid) {
@@ -84,6 +101,17 @@ export const orderService = {
     };
 
     orders.push(newOrder);
+
+    notificationService.pushNotification(
+      userId,
+      'user',
+      'unlock',
+      '开锁成功',
+      '您的车辆已开锁，祝您骑行愉快',
+      newOrder.id,
+      'order'
+    );
+
     return { success: true, order: newOrder };
   },
 
@@ -159,6 +187,22 @@ export const orderService = {
     bikeService.updateBikeStatus(order.bikeId, 'available');
 
     userService.calculateCreditScore(order.userId, 'complete_ride');
+
+    const durationMinutes = Math.ceil(duration / 60);
+    const durationText = durationMinutes >= 60
+      ? `${Math.floor(durationMinutes / 60)}小时${durationMinutes % 60}分钟`
+      : `${durationMinutes}分钟`;
+    const amount = orders[index].totalAmount.toFixed(2);
+
+    notificationService.pushNotification(
+      order.userId,
+      'user',
+      'order-complete',
+      '骑行结束',
+      `您的骑行已结束，时长${durationText}，费用${amount}元`,
+      order.id,
+      'order'
+    );
 
     return { success: true, order: orders[index] };
   },

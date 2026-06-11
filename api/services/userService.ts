@@ -1,4 +1,4 @@
-import { User, UserRole, DepositRecord, DepositType, DepositStatus } from '../../shared/types.js';
+﻿import { User, UserRole, DepositRecord, DepositType, DepositStatus } from '@shared/types';
 import { mockUsers, mockDepositRecords, generateId } from '../data/mockData.js';
 import { configService } from './configService.js';
 
@@ -7,6 +7,22 @@ let depositRecords: DepositRecord[] = [...mockDepositRecords];
 
 export const userService = {
   login(username: string, password: string, role: UserRole): User | null {
+    const mockAccounts: Record<string, { userId: string; password: string }> = {
+      'user001': { userId: 'user-001', password: '123456' },
+      'user002': { userId: 'user-002', password: '123456' },
+      'operator1': { userId: 'op-001', password: '123456' },
+      'operator2': { userId: 'op-002', password: '123456' },
+      'dispatcher1': { userId: 'disp-001', password: '123456' },
+      'finance1': { userId: 'fin-001', password: '123456' },
+      'admin1': { userId: 'admin-001', password: '123456' },
+    };
+
+    const account = mockAccounts[username];
+    if (account && account.password === password) {
+      const user = users.find(u => u.id === account.userId && u.role === role);
+      if (user) return user;
+    }
+
     const user = users.find(u => u.nickname === username && u.role === role);
     if (user) {
       return user;

@@ -1,6 +1,6 @@
-import { Router, type Request, type Response } from 'express';
+﻿import { Router, type Request, type Response } from 'express';
 import { bikeService } from '../services/bikeService.js';
-import { ApiResponse, Bike, BikeStatus } from '../../shared/types.js';
+import { ApiResponse, Bike, BikeStatus } from '@shared/types';
 
 const router = Router();
 

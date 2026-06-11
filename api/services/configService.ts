@@ -1,4 +1,4 @@
-import { SystemConfig, PricingConfig, CreditConfig, DispatchConfig } from '../../shared/types.js';
+﻿import { SystemConfig, PricingConfig, CreditConfig, DispatchConfig } from '@shared/types';
 import { mockSystemConfig } from '../data/mockData.js';
 
 let systemConfig: SystemConfig = { ...mockSystemConfig };

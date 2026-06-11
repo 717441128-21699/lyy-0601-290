@@ -1,6 +1,6 @@
-import { Router, type Request, type Response } from 'express';
+﻿import { Router, type Request, type Response } from 'express';
 import { dispatchService } from '../services/dispatchService.js';
-import { ApiResponse, HeatmapData, DispatchSuggestion, DispatchTask, SuggestionStatus, DispatchTaskStatus, DispatchPriority } from '../../shared/types.js';
+import { ApiResponse, HeatmapData, DispatchSuggestion, DispatchTask, SuggestionStatus, DispatchTaskStatus, DispatchPriority } from '@shared/types';
 
 const router = Router();
 

@@ -1,6 +1,7 @@
-import { HeatmapData, DispatchSuggestion, DispatchTask, SuggestionStatus, DispatchTaskStatus, DispatchPriority } from '../../shared/types.js';
+﻿import { HeatmapData, DispatchSuggestion, DispatchTask, SuggestionStatus, DispatchTaskStatus, DispatchPriority } from '@shared/types';
 import { mockHeatmapData, mockDispatchSuggestions, mockDispatchTasks, generateId, areas, operators } from '../data/mockData.js';
 import { bikeService } from './bikeService.js';
+import { notificationService } from './notificationService.js';
 
 let heatmapData: HeatmapData[] = [...mockHeatmapData];
 let dispatchSuggestions: DispatchSuggestion[] = [...mockDispatchSuggestions];
@@ -67,6 +68,20 @@ export const dispatchService = {
     };
 
     dispatchTasks.push(task);
+
+    if (task.assignedStaff && task.assignedStaff.length > 0) {
+      task.assignedStaff.forEach(dispatcherId => {
+        notificationService.pushNotification(
+          dispatcherId,
+          'dispatcher',
+          'dispatch',
+          '调度任务已创建',
+          '调度任务已生成，请安排执行',
+          task.id,
+          'dispatch'
+        );
+      });
+    }
 
     return { success: true, suggestion, task };
   },

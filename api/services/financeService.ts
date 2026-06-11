@@ -1,4 +1,4 @@
-import { FinanceOverview, DailyRevenue, DepositRecord, OperatingCost, ProfitReport, DepositType } from '../../shared/types.js';
+﻿import { FinanceOverview, DailyRevenue, DepositRecord, OperatingCost, ProfitReport, DepositType } from '@shared/types';
 import { mockDailyRevenues, mockOperatingCosts, mockProfitReports, mockDepositRecords } from '../data/mockData.js';
 import { userService } from './userService.js';
 import { operatorService } from './operatorService.js';

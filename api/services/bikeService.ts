@@ -1,4 +1,4 @@
-import { Bike, BikeStatus } from '../../shared/types.js';
+﻿import { Bike, BikeStatus } from '@shared/types';
 import { mockBikes, generateId } from '../data/mockData.js';
 
 let bikes: Bike[] = [...mockBikes];

@@ -23,6 +23,9 @@ import {
 } from 'lucide-react';
 import type { SidebarItem } from '@/components/layout/Sidebar';
 import api from '@/utils/api';
+import { toast } from '@/components/ui/toastStore';
+import Input from '@/components/ui/Input';
+import { useAuthStore } from '@/store/authStore';
 import type { BatteryTask, BatteryTaskStatus } from '@shared/types';
 
 const operatorSidebarItems: SidebarItem[] = [
@@ -42,11 +45,14 @@ const tabItems = [
 ];
 
 export default function BatteryTasks() {
+  const { user } = useAuthStore();
   const [activeTab, setActiveTab] = useState('all');
   const [loading, setLoading] = useState(true);
   const [tasks, setTasks] = useState<BatteryTask[]>([]);
   const [selectedTask, setSelectedTask] = useState<BatteryTask | null>(null);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
+  const [completeModalOpen, setCompleteModalOpen] = useState(false);
+  const [targetBattery, setTargetBattery] = useState('100');
   const [actionLoading, setActionLoading] = useState(false);
 
   const fetchTasks = async () => {
@@ -91,10 +97,17 @@ export default function BatteryTasks() {
   const handleAcceptTask = async (taskId: string) => {
     try {
       setActionLoading(true);
-      await api.put(`/operators/battery-tasks/${taskId}/accept`);
-      await fetchTasks();
-    } catch (error) {
-      console.error('接受任务失败:', error);
+      const res = await api.post(`/operators/battery-tasks/${taskId}/accept`, {
+        operatorId: user?.id,
+      });
+      if (res.code === 200) {
+        toast.success('接受任务成功');
+        await fetchTasks();
+      } else {
+        toast.error(res.message || '接受任务失败');
+      }
+    } catch (error: any) {
+      toast.error(error?.message || '接受任务失败');
     } finally {
       setActionLoading(false);
     }
@@ -103,23 +116,48 @@ export default function BatteryTasks() {
   const handleStartTask = async (taskId: string) => {
     try {
       setActionLoading(true);
-      await api.put(`/operators/battery-tasks/${taskId}/start`);
-      await fetchTasks();
-    } catch (error) {
-      console.error('开始任务失败:', error);
+      const res = await api.post(`/operators/battery-tasks/${taskId}/start`);
+      if (res.code === 200) {
+        toast.success('开始任务成功');
+        await fetchTasks();
+      } else {
+        toast.error(res.message || '开始任务失败');
+      }
+    } catch (error: any) {
+      toast.error(error?.message || '开始任务失败');
     } finally {
       setActionLoading(false);
     }
   };
 
-  const handleCompleteTask = async (taskId: string) => {
+  const handleOpenCompleteModal = (task: BatteryTask) => {
+    setSelectedTask(task);
+    setTargetBattery('100');
+    setCompleteModalOpen(true);
+  };
+
+  const handleCompleteTask = async () => {
+    if (!selectedTask) return;
+    const battery = parseInt(targetBattery);
+    if (isNaN(battery) || battery < 0 || battery > 100) {
+      toast.error('请输入有效的电量值（0-100）');
+      return;
+    }
     try {
       setActionLoading(true);
-      await api.put(`/operators/battery-tasks/${taskId}/complete`, { targetBattery: 95 });
-      await fetchTasks();
-      setDetailModalOpen(false);
-    } catch (error) {
-      console.error('完成任务失败:', error);
+      const res = await api.post(`/operators/battery-tasks/${selectedTask.id}/complete`, {
+        targetBattery: battery,
+      });
+      if (res.code === 200) {
+        toast.success('完成换电成功');
+        await fetchTasks();
+        setCompleteModalOpen(false);
+        setDetailModalOpen(false);
+      } else {
+        toast.error(res.message || '完成任务失败');
+      }
+    } catch (error: any) {
+      toast.error(error?.message || '完成任务失败');
     } finally {
       setActionLoading(false);
     }
@@ -241,7 +279,7 @@ export default function BatteryTasks() {
                           loading={actionLoading}
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleCompleteTask(task.id);
+                            handleOpenCompleteModal(task);
                           }}
                         >
                           完成换电
@@ -373,7 +411,10 @@ export default function BatteryTasks() {
                     variant="primary"
                     icon={<CheckCircle className="w-4 h-4" />}
                     loading={actionLoading}
-                    onClick={() => handleCompleteTask(selectedTask.id)}
+                    onClick={() => {
+                      setDetailModalOpen(false);
+                      handleOpenCompleteModal(selectedTask);
+                    }}
                   >
                     完成换电
                   </Button>
@@ -381,6 +422,39 @@ export default function BatteryTasks() {
               </div>
             </div>
           )}
+        </Modal>
+
+        <Modal
+          open={completeModalOpen}
+          onClose={() => setCompleteModalOpen(false)}
+          title="完成换电"
+          description="请输入目标电量"
+          width="md"
+        >
+          <div className="space-y-5">
+            <Input
+              label="目标电量（%）"
+              type="number"
+              min={0}
+              max={100}
+              value={targetBattery}
+              onChange={(e) => setTargetBattery(e.target.value)}
+              placeholder="请输入目标电量"
+            />
+            <div className="flex gap-3 pt-2">
+              <Button variant="outline" onClick={() => setCompleteModalOpen(false)}>
+                取消
+              </Button>
+              <Button
+                variant="primary"
+                icon={<CheckCircle className="w-4 h-4" />}
+                loading={actionLoading}
+                onClick={handleCompleteTask}
+              >
+                确认完成
+              </Button>
+            </div>
+          </div>
         </Modal>
       </div>
     </Layout>

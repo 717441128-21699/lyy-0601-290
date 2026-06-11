@@ -1,4 +1,4 @@
-import { SystemConfig, CityStats, User, UserRole } from '../../shared/types.js';
+﻿import { SystemConfig, CityStats, User, UserRole } from '@shared/types';
 import { mockCityStats } from '../data/mockData.js';
 import { configService } from './configService.js';
 import { userService } from './userService.js';

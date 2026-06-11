@@ -1,7 +1,8 @@
-import { BatteryTask, FaultReport, MaintenanceRecord, BatteryTaskStatus, FaultStatus } from '../../shared/types.js';
+﻿import { BatteryTask, FaultReport, MaintenanceRecord, BatteryTaskStatus, FaultStatus } from '@shared/types';
 import { mockBatteryTasks, mockFaultReports, mockMaintenanceRecords, generateId, operators } from '../data/mockData.js';
 import { bikeService } from './bikeService.js';
 import { userService } from './userService.js';
+import { notificationService } from './notificationService.js';
 
 let batteryTasks: BatteryTask[] = [...mockBatteryTasks];
 let faultReports: FaultReport[] = [...mockFaultReports];
@@ -44,6 +45,16 @@ export const operatorService = {
       assignedTime: now,
     };
 
+    notificationService.pushNotification(
+      operatorId,
+      'operator',
+      'battery-task',
+      '换电任务已接受',
+      `您已接受车辆 ${batteryTasks[index].bikeNo} 的换电任务`,
+      taskId,
+      'battery-task'
+    );
+
     return batteryTasks[index];
   },
 
@@ -74,6 +85,18 @@ export const operatorService = {
       targetBattery,
       completeTime: new Date().toISOString().replace('T', ' ').substring(0, 19),
     };
+
+    if (task.operatorId) {
+      notificationService.pushNotification(
+        task.operatorId,
+        'operator',
+        'battery-task',
+        '换电任务完成',
+        `车辆 ${task.bikeNo} 换电完成，电量 ${targetBattery}%`,
+        taskId,
+        'battery-task'
+      );
+    }
 
     return batteryTasks[index];
   },

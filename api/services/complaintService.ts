@@ -1,6 +1,7 @@
-import { Complaint, ComplaintType, ComplaintStatus } from '../../shared/types.js';
+﻿import { Complaint, ComplaintType, ComplaintStatus } from '@shared/types';
 import { mockComplaints, generateId } from '../data/mockData.js';
 import { userService } from './userService.js';
+import { notificationService } from './notificationService.js';
 
 let complaints: Complaint[] = [...mockComplaints];
 
@@ -79,6 +80,16 @@ export const complaintService = {
       status: 'resolved',
       handleResult,
     };
+
+    notificationService.pushNotification(
+      complaints[index].userId,
+      'user',
+      'complaint',
+      '投诉处理完成',
+      '您的投诉已处理，请查看详情并确认',
+      complaintId,
+      'complaint'
+    );
 
     return complaints[index];
   },

@@ -24,6 +24,8 @@ import {
 } from 'lucide-react';
 import type { SidebarItem } from '@/components/layout/Sidebar';
 import api from '@/utils/api';
+import { toast } from '@/components/ui/toastStore';
+import { useAuthStore } from '@/store/authStore';
 import type { FaultReport, FaultStatus } from '@shared/types';
 
 const operatorSidebarItems: SidebarItem[] = [
@@ -49,6 +51,7 @@ const handleOptions = [
 ];
 
 export default function FaultReports() {
+  const { user } = useAuthStore();
   const [activeTab, setActiveTab] = useState('all');
   const [loading, setLoading] = useState(true);
   const [reports, setReports] = useState<FaultReport[]>([]);
@@ -57,6 +60,7 @@ export default function FaultReports() {
   const [handleModalOpen, setHandleModalOpen] = useState(false);
   const [handleMethod, setHandleMethod] = useState('');
   const [handleResult, setHandleResult] = useState('');
+  const [resolveModalOpen, setResolveModalOpen] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
 
   const fetchReports = async () => {
@@ -114,45 +118,57 @@ export default function FaultReports() {
     setHandleModalOpen(true);
   };
 
+  const handleOpenResolveModal = (report: FaultReport) => {
+    setSelectedReport(report);
+    setHandleResult('');
+    setResolveModalOpen(true);
+  };
+
   const handleProcess = async () => {
     if (!selectedReport) return;
     try {
       setActionLoading(true);
-      await api.put(`/operators/fault-reports/${selectedReport.id}/handle`);
-      await fetchReports();
-      setHandleModalOpen(false);
-      setDetailModalOpen(false);
-    } catch (error) {
-      console.error('处理故障失败:', error);
+      const res = await api.post(`/operators/fault-reports/${selectedReport.id}/handle`, {
+        handlerId: user?.id,
+        handlerName: user?.nickname || user?.realName || '运维人员',
+      });
+      if (res.code === 200) {
+        toast.success('开始处理故障');
+        await fetchReports();
+        setHandleModalOpen(false);
+        setDetailModalOpen(false);
+      } else {
+        toast.error(res.message || '处理故障失败');
+      }
+    } catch (error: any) {
+      toast.error(error?.message || '处理故障失败');
     } finally {
       setActionLoading(false);
     }
   };
 
   const handleResolve = async () => {
-    if (!selectedReport || !handleResult.trim()) return;
+    if (!selectedReport || !handleResult.trim()) {
+      toast.error('请输入处理结果');
+      return;
+    }
     try {
       setActionLoading(true);
-      await api.put(`/operators/fault-reports/${selectedReport.id}/resolve`, {
+      const res = await api.post(`/operators/fault-reports/${selectedReport.id}/resolve`, {
         handleResult,
       });
-      await fetchReports();
-      setHandleModalOpen(false);
-      setDetailModalOpen(false);
-    } catch (error) {
-      console.error('解决故障失败:', error);
+      if (res.code === 200) {
+        toast.success('故障已解决');
+        await fetchReports();
+        setResolveModalOpen(false);
+        setDetailModalOpen(false);
+      } else {
+        toast.error(res.message || '解决故障失败');
+      }
+    } catch (error: any) {
+      toast.error(error?.message || '解决故障失败');
     } finally {
       setActionLoading(false);
-    }
-  };
-
-  const handleSubmit = async () => {
-    if (!selectedReport) return;
-    
-    if (selectedReport.status === 'pending') {
-      await handleProcess();
-    } else if (selectedReport.status === 'processing') {
-      await handleResolve();
     }
   };
 
@@ -226,14 +242,24 @@ export default function FaultReports() {
                       >
                         查看详情
                       </Button>
-                      {(report.status === 'pending' || report.status === 'processing') && (
+                      {report.status === 'pending' && (
                         <Button
                           variant="primary"
                           size="sm"
                           icon={<Wrench className="w-4 h-4" />}
                           onClick={() => handleOpenHandleModal(report)}
                         >
-                          {report.status === 'pending' ? '处理' : '完成'}
+                          处理
+                        </Button>
+                      )}
+                      {report.status === 'processing' && (
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          icon={<CheckCircle className="w-4 h-4" />}
+                          onClick={() => handleOpenResolveModal(report)}
+                        >
+                          解决
                         </Button>
                       )}
                     </CardFooter>
@@ -330,7 +356,7 @@ export default function FaultReports() {
                 <Button variant="outline" onClick={() => setDetailModalOpen(false)}>
                   关闭
                 </Button>
-                {(selectedReport.status === 'pending' || selectedReport.status === 'processing') && (
+                {selectedReport.status === 'pending' && (
                   <Button
                     variant="primary"
                     icon={<Wrench className="w-4 h-4" />}
@@ -339,7 +365,19 @@ export default function FaultReports() {
                       handleOpenHandleModal(selectedReport);
                     }}
                   >
-                    {selectedReport.status === 'pending' ? '处理故障' : '完成处理'}
+                    处理故障
+                  </Button>
+                )}
+                {selectedReport.status === 'processing' && (
+                  <Button
+                    variant="primary"
+                    icon={<CheckCircle className="w-4 h-4" />}
+                    onClick={() => {
+                      setDetailModalOpen(false);
+                      handleOpenResolveModal(selectedReport);
+                    }}
+                  >
+                    解决故障
                   </Button>
                 )}
               </div>
@@ -350,28 +388,15 @@ export default function FaultReports() {
         <Modal
           open={handleModalOpen}
           onClose={() => setHandleModalOpen(false)}
-          title={selectedReport?.status === 'pending' ? '处理故障' : '填写处理结果'}
+          title="处理故障"
+          description="确认开始处理此故障"
           width="md"
         >
           <div className="space-y-5">
-            {selectedReport?.status === 'processing' && (
-              <div>
-                <Select
-                  label="处理方式"
-                  options={handleOptions}
-                  value={handleMethod}
-                  onChange={setHandleMethod}
-                  placeholder="请选择处理方式"
-                />
-              </div>
-            )}
-            <div>
-              <Input
-                label={selectedReport?.status === 'pending' ? '处理说明' : '处理结果'}
-                value={handleResult}
-                onChange={(e) => setHandleResult(e.target.value)}
-                placeholder={selectedReport?.status === 'pending' ? '请输入处理说明' : '请输入处理结果'}
-              />
+            <div className="bg-gray-50 rounded-xl p-4">
+              <p className="text-sm text-gray-600">
+                点击确认后，故障状态将变为"处理中"，您将作为处理人负责此故障的修复工作。
+              </p>
             </div>
 
             <div className="flex gap-3 pt-2">
@@ -380,12 +405,54 @@ export default function FaultReports() {
               </Button>
               <Button
                 variant="primary"
-                icon={<Send className="w-4 h-4" />}
+                icon={<Wrench className="w-4 h-4" />}
                 loading={actionLoading}
-                onClick={handleSubmit}
-                disabled={selectedReport?.status === 'processing' && !handleResult.trim()}
+                onClick={handleProcess}
               >
-                {selectedReport?.status === 'pending' ? '开始处理' : '提交结果'}
+                确认处理
+              </Button>
+            </div>
+          </div>
+        </Modal>
+
+        <Modal
+          open={resolveModalOpen}
+          onClose={() => setResolveModalOpen(false)}
+          title="解决故障"
+          description="请填写处理结果"
+          width="md"
+        >
+          <div className="space-y-5">
+            <div>
+              <Select
+                label="处理方式"
+                options={handleOptions}
+                value={handleMethod}
+                onChange={setHandleMethod}
+                placeholder="请选择处理方式"
+              />
+            </div>
+            <div>
+              <Input
+                label="处理结果"
+                value={handleResult}
+                onChange={(e) => setHandleResult(e.target.value)}
+                placeholder="请输入处理结果"
+              />
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <Button variant="outline" onClick={() => setResolveModalOpen(false)}>
+                取消
+              </Button>
+              <Button
+                variant="primary"
+                icon={<CheckCircle className="w-4 h-4" />}
+                loading={actionLoading}
+                onClick={handleResolve}
+                disabled={!handleResult.trim()}
+              >
+                确认解决
               </Button>
             </div>
           </div>

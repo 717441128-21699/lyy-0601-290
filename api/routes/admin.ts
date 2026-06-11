@@ -1,6 +1,7 @@
-import { Router, type Request, type Response } from 'express';
+﻿import { Router, type Request, type Response } from 'express';
 import { adminService } from '../services/adminService.js';
-import { ApiResponse, SystemConfig, CityStats, User, UserRole } from '../../shared/types.js';
+import { configService } from '../services/configService.js';
+import { ApiResponse, SystemConfig, CityStats, User, UserRole, PricingConfig } from '@shared/types';
 
 const router = Router();
 
@@ -12,6 +13,47 @@ router.get('/config', (req: Request, res: Response): void => {
       code: 200,
       message: '获取成功',
       data: config,
+    };
+    res.json(response);
+  } catch (error) {
+    const response: ApiResponse<null> = {
+      code: 500,
+      message: '服务器内部错误',
+      data: null,
+    };
+    res.status(500).json(response);
+  }
+});
+
+router.get('/config/pricing', (req: Request, res: Response): void => {
+  try {
+    const pricing = configService.getPricingConfig();
+
+    const response: ApiResponse<PricingConfig> = {
+      code: 200,
+      message: '获取成功',
+      data: pricing,
+    };
+    res.json(response);
+  } catch (error) {
+    const response: ApiResponse<null> = {
+      code: 500,
+      message: '服务器内部错误',
+      data: null,
+    };
+    res.status(500).json(response);
+  }
+});
+
+router.put('/config/pricing', (req: Request, res: Response): void => {
+  try {
+    const pricing = req.body;
+    const updatedPricing = configService.updatePricingConfig(pricing);
+
+    const response: ApiResponse<PricingConfig> = {
+      code: 200,
+      message: '更新成功',
+      data: updatedPricing,
     };
     res.json(response);
   } catch (error) {

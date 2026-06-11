@@ -14,9 +14,12 @@ import type { Bike as BikeType } from '@shared/types';
 import Card from '@/components/ui/Card';
 import Badge from '@/components/ui/Badge';
 import Button from '@/components/ui/Button';
+import Modal from '@/components/ui/Modal';
 import BottomNav from '@/components/layout/BottomNav';
 import { useAuthStore } from '@/store/authStore';
 import { cn } from '@/lib/utils';
+import api from '@/utils/api';
+import { toast } from '@/components/ui/toastStore';
 
 const mockBikes: BikeType[] = [
   { id: 'bike-001', bikeNo: 'EB001', status: 'available', battery: 85, lng: 116.4074, lat: 39.9042, distance: 120, areaId: 'area-001', areaName: '中心商务区', totalRides: 156, faultCount: 2 },
@@ -40,6 +43,9 @@ export default function Home() {
   const [nearbyBikes, setNearbyBikes] = useState<BikeType[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedBike, setSelectedBike] = useState<string | null>(null);
+  const [recommendedBikes, setRecommendedBikes] = useState<BikeType[]>([]);
+  const [showRecommendModal, setShowRecommendModal] = useState(false);
+  const [scanning, setScanning] = useState(false);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -49,8 +55,43 @@ export default function Home() {
     return () => clearTimeout(timer);
   }, []);
 
-  const handleScan = () => {
-    navigate('/riding');
+  const handleScan = async (bikeId?: string) => {
+    if (!user) {
+      toast.error('请先登录');
+      return;
+    }
+    if (scanning) return;
+
+    try {
+      setScanning(true);
+      const targetBikeId = bikeId || `bike-${Date.now()}`;
+      const res = await api.post<{ success: boolean; orderId?: string; message?: string; recommendedBikes?: BikeType[] }>(
+        '/orders/unlock',
+        { userId: user.id, bikeId: targetBikeId }
+      );
+
+      if (res.code === 200 && res.data?.success) {
+        toast.success('开锁成功');
+        if (res.data.orderId) {
+          localStorage.setItem('currentOrderId', res.data.orderId);
+        }
+        navigate('/user/riding');
+      } else {
+        toast.error(res.data?.message || '开锁失败');
+        if (res.data?.recommendedBikes && res.data.recommendedBikes.length > 0) {
+          setRecommendedBikes(res.data.recommendedBikes);
+          setShowRecommendModal(true);
+        }
+      }
+    } catch (error: any) {
+      toast.error(error?.message || '开锁失败');
+      if (error?.data?.recommendedBikes && error.data.recommendedBikes.length > 0) {
+        setRecommendedBikes(error.data.recommendedBikes);
+        setShowRecommendModal(true);
+      }
+    } finally {
+      setScanning(false);
+    }
   };
 
   const handleBikeClick = (bikeId: string) => {
@@ -280,12 +321,11 @@ export default function Home() {
                     <Button
                       size="sm"
                       variant={bike.status === 'available' ? 'primary' : 'secondary'}
-                      disabled={bike.status !== 'available'}
+                      disabled={scanning || bike.status === 'in-use' || bike.status === 'fault' || bike.status === 'maintenance'}
+                      loading={scanning}
                       onClick={(e) => {
                         e.stopPropagation();
-                        if (bike.status === 'available') {
-                          handleScan();
-                        }
+                        handleScan(bike.id);
                       }}
                     >
                       扫码
@@ -305,16 +345,71 @@ export default function Home() {
       </div>
 
       <button
-        onClick={handleScan}
-        className="fixed bottom-24 left-1/2 -translate-x-1/2 z-40 w-16 h-16 rounded-full bg-gradient-to-r from-secondary-400 to-secondary-500 shadow-lg shadow-secondary-400/40 flex items-center justify-center text-white hover:scale-105 active:scale-95 transition-transform"
+        onClick={() => handleScan()}
+        disabled={scanning}
+        className={cn(
+          'fixed bottom-24 left-1/2 -translate-x-1/2 z-40 w-16 h-16 rounded-full bg-gradient-to-r from-secondary-400 to-secondary-500 shadow-lg shadow-secondary-400/40 flex items-center justify-center text-white transition-transform',
+          !scanning && 'hover:scale-105 active:scale-95',
+          scanning && 'opacity-70 cursor-not-allowed'
+        )}
       >
-        <QrCode className="w-7 h-7" />
+        <QrCode className={cn('w-7 h-7', scanning && 'animate-spin')} />
         <span className="absolute -bottom-7 text-xs text-gray-500 font-medium whitespace-nowrap">
-          扫码开锁
+          {scanning ? '开锁中...' : '扫码开锁'}
         </span>
       </button>
 
       <BottomNav />
+
+      <Modal
+        open={showRecommendModal}
+        onClose={() => setShowRecommendModal(false)}
+        title="推荐车辆"
+        description="当前车辆不可用，为您推荐附近可用车辆"
+        width="lg"
+      >
+        <div className="space-y-3">
+          {recommendedBikes.map((bike) => (
+            <div
+              key={bike.id}
+              className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors"
+            >
+              <div className="w-12 h-12 rounded-xl bg-primary-50 flex items-center justify-center">
+                <Bike className="w-6 h-6 text-primary-500" />
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-gray-900">{bike.bikeNo}</span>
+                  {getStatusBadge(bike.status)}
+                </div>
+                <div className="flex items-center gap-3 mt-1">
+                  <div className="flex items-center gap-1">
+                    <Battery className={cn('w-4 h-4', getBatteryColor(bike.battery))} />
+                    <span className={cn('text-sm', getBatteryColor(bike.battery))}>
+                      {bike.battery}%
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1 text-gray-400">
+                    <MapPin className="w-4 h-4" />
+                    <span className="text-sm">{bike.distance}m</span>
+                  </div>
+                </div>
+              </div>
+              <Button
+                size="sm"
+                variant="primary"
+                icon={<QrCode className="w-4 h-4" />}
+                onClick={() => {
+                  setShowRecommendModal(false);
+                  handleScan(bike.id);
+                }}
+              >
+                立即扫码
+              </Button>
+            </div>
+          ))}
+        </div>
+      </Modal>
     </div>
   );
 }

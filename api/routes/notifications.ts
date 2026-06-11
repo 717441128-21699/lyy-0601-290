@@ -1,6 +1,6 @@
-import { Router, type Request, type Response } from 'express';
+﻿import { Router, type Request, type Response } from 'express';
 import { notificationService } from '../services/notificationService.js';
-import { ApiResponse, Notification, NotificationType, UserRole } from '../../shared/types.js';
+import { ApiResponse, Notification, NotificationType, UserRole } from '@shared/types';
 
 const router = Router();
 
@@ -106,10 +106,10 @@ router.get('/:notificationId', (req: Request, res: Response): void => {
   }
 });
 
-router.put('/:notificationId/read', (req: Request, res: Response): void => {
+router.post('/:id/read', (req: Request, res: Response): void => {
   try {
-    const { notificationId } = req.params;
-    const notification = notificationService.markAsRead(notificationId);
+    const { id } = req.params;
+    const notification = notificationService.markAsRead(id);
 
     if (!notification) {
       const response: ApiResponse<null> = {

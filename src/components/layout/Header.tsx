@@ -1,8 +1,7 @@
 import { cn } from '@/lib/utils';
-import { Bell, Search, Menu, ChevronDown } from 'lucide-react';
+import { Search, Menu, ChevronDown } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
-import { useNotificationStore } from '@/store/notificationStore';
-import Badge from '@/components/ui/Badge';
+import NotificationCenter from '@/components/ui/NotificationCenter';
 import { useState } from 'react';
 
 interface HeaderProps {
@@ -19,7 +18,6 @@ export default function Header({
   className,
 }: HeaderProps) {
   const { user } = useAuthStore();
-  const { unreadCount } = useNotificationStore();
   const [showUserMenu, setShowUserMenu] = useState(false);
 
   return (
@@ -54,14 +52,7 @@ export default function Header({
           />
         </div>
 
-        <button className="relative p-2.5 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-xl transition-colors">
-          <Bell className="w-5 h-5" />
-          {unreadCount > 0 && (
-            <span className="absolute top-1.5 right-1.5 w-4 h-4 bg-danger-500 text-white text-xs font-medium rounded-full flex items-center justify-center">
-              {unreadCount > 9 ? '9+' : unreadCount}
-            </span>
-          )}
-        </button>
+        <NotificationCenter />
 
         <div className="relative">
           <button

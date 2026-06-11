@@ -1,9 +1,9 @@
-import {
+import type {
   User, Bike, Order, BatteryTask, FaultReport, MaintenanceRecord,
   HeatmapData, DispatchSuggestion, DispatchTask, DepositRecord,
   DailyRevenue, OperatingCost, ProfitReport, Complaint, Notification,
   SystemConfig, CityStats, UserRole
-} from '../shared/types.js';
+} from '../../shared/types';
 
 const generateId = () => Math.random().toString(36).substring(2, 10);
 
@@ -112,7 +112,7 @@ export const mockUsers: User[] = [
 export const mockBikes: Bike[] = [
   { id: 'bike-001', bikeNo: 'EB001', status: 'available', battery: 85, lng: 116.4074, lat: 39.9042, areaId: 'area-001', areaName: '中心商务区', totalRides: 156, faultCount: 2 },
   { id: 'bike-002', bikeNo: 'EB002', status: 'available', battery: 92, lng: 116.4084, lat: 39.9052, areaId: 'area-001', areaName: '中心商务区', totalRides: 203, faultCount: 1 },
-  { id: 'bike-003', bikeNo: 'EB003', status: 'in-use', battery: 67, lng: 116.4064, lat: 39.9032, areaId: 'area-001', areaName: '中心商务区', totalRides: 178, faultCount: 3 },
+  { id: 'bike-003', bikeNo: 'EB003', status: 'available', battery: 67, lng: 116.4064, lat: 39.9032, areaId: 'area-001', areaName: '中心商务区', totalRides: 178, faultCount: 3 },
   { id: 'bike-004', bikeNo: 'EB004', status: 'low-battery', battery: 15, lng: 116.4094, lat: 39.9062, areaId: 'area-001', areaName: '中心商务区', totalRides: 245, faultCount: 0 },
   { id: 'bike-005', bikeNo: 'EB005', status: 'available', battery: 78, lng: 116.3974, lat: 39.9842, areaId: 'area-002', areaName: '科技园区', totalRides: 189, faultCount: 1 },
   { id: 'bike-006', bikeNo: 'EB006', status: 'available', battery: 45, lng: 116.3984, lat: 39.9852, areaId: 'area-002', areaName: '科技园区', totalRides: 167, faultCount: 2 },
@@ -197,17 +197,19 @@ export const mockOrders: Order[] = [
     userName: '骑行达人',
     bikeId: 'bike-003',
     bikeNo: 'EB003',
-    status: 'ongoing',
+    status: 'completed',
     startTime: '2026-06-12 10:00:00',
-    duration: 0,
-    distance: 0,
+    endTime: '2026-06-12 10:25:00',
+    duration: 1500,
+    distance: 3200,
     startLng: 116.4064, startLat: 39.9032,
+    endLng: 116.4164, endLat: 39.9132,
     baseFee: 2,
-    durationFee: 0,
-    distanceFee: 0,
+    durationFee: 1.5,
+    distanceFee: 3.2,
     discount: 0,
-    totalAmount: 2,
-    paidAmount: 0,
+    totalAmount: 6.7,
+    paidAmount: 6.7,
   },
 ];
 

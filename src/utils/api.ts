@@ -55,7 +55,9 @@ async function request<T>(url: string, options: RequestOptions = {}): Promise<Ap
       if (response.status === 401) {
         useAuthStore.getState().logout();
       }
-      throw new Error(data.message || '请求失败');
+      const err = new Error(data.message || '请求失败');
+      (err as any).data = data.data;
+      throw err;
     }
 
     return data;
